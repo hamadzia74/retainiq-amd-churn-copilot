@@ -1,0 +1,24 @@
+# RetainIQ - churn-prevention copilot on AMD
+# Install:  pip install -r requirements.txt
+
+# Talks to any OpenAI-compatible server. By default: vLLM on AMD Instinct MI300X (ROCm)
+openai>=1.40
+
+# Data + the churn model (the prediction is classical ML, never the LLM)
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.4
+
+# Terminal UI: panels, tables, progress bars
+rich>=13.0
+
+# Reads the LLM endpoint from .env
+python-dotenv>=1.0
+
+# Web API (api/) - serves the React app in frontend/ too
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Tests (tests/)
+pytest>=8.0
+httpx>=0.27
