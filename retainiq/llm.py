@@ -16,6 +16,7 @@ import re
 import threading
 import time
 from collections import deque
+from dataclasses import dataclass
 from typing import Callable
 
 import httpx
@@ -31,6 +32,14 @@ MAX_TRIES = 5
 RETRYABLE = {429, 502, 503}
 
 OnWait = Callable[[float, str], None]   # (seconds, reason)
+OnDelta = Callable[[str], None]         # a new piece of streamed answer text
+
+
+@dataclass
+class StreamResult:
+    """A streamed completion, reassembled: the full text plus any tool calls (OpenAI dict shape)."""
+    content: str
+    tool_calls: list[dict]
 
 
 class LLMError(Exception):
@@ -81,7 +90,8 @@ def _friendly(exc: APIStatusError) -> LLMError:
         return LLMError("Access denied (403): the AMD account may still be in review.", fatal=True)
     if code == 404:
         return LLMError(f"Endpoint not found (404) at {config.LLM_BASE_URL}.", fatal=True)
-    if code == 400 and "not supported" in msg.lower():
+    # Token Factory says "Requested model <name> not supported" - but "stream not supported" is not a retired model.
+    if code == 400 and "not supported" in msg.lower() and "model" in msg.lower() and "stream" not in msg.lower():
         return LLMError(f"Model {config.LLM_MODEL} is no longer offered. Pick one from GET /v1/models.", fatal=True)
     if code == 429:
         return LLMError("Still rate limited by the provider after several retries. Try again in a minute.")
@@ -96,6 +106,7 @@ class LLM:
         self.limiter = RateLimiter(config.LLM_RPM)
         self.slots = threading.BoundedSemaphore(config.LLM_CONCURRENCY)
         self.problem: str | None = None
+        self.model_ids: list[str] = []         # what the provider offers (set by the availability check)
         self._available: bool | None = None
         self._checked_at = 0.0
         self._usage: tuple[float, dict | None] = (0.0, None)
@@ -120,6 +131,7 @@ class LLM:
         except Exception:
             self.problem = f"{config.LLM_BASE_URL} unreachable"
             return False
+        self.model_ids = ids
         if ids and self.model not in ids:
             self.problem = f"Model {self.model} not offered. Available: {', '.join(ids[:8])}"
             return False
@@ -150,27 +162,26 @@ class LLM:
         return cached
 
     # ---------------------------------------------------------------- calls
-    def chat(self, messages: list[dict], on_wait: OnWait | None = None, **kwargs):
-        """Chat completion with pacing and retries. Returns the full response (with .usage)."""
+    def _call(self, fn: Callable, on_wait: OnWait | None, can_retry: Callable[[], bool] = lambda: True):
+        """Run one provider call with pacing, the concurrency cap and retries (429/502/503/connection).
+        `can_retry` lets streaming refuse a retry once text has already been shown."""
         for attempt in range(1, MAX_TRIES + 1):
             self.limiter.acquire(on_wait)
             with self.slots:
                 started = time.perf_counter()
                 try:
-                    resp = self.client.chat.completions.create(model=self.model, messages=messages, **kwargs)
-                    usage = getattr(resp, "usage", None)
-                    log.info("chat ok in %.1fs (try %d, %s completion tokens)", time.perf_counter() - started,
-                             attempt, getattr(usage, "completion_tokens", "?"))
-                    return resp
+                    result = fn()
+                    log.info("chat ok in %.1fs (try %d)", time.perf_counter() - started, attempt)
+                    return result
                 except APIStatusError as exc:
                     log.warning("chat HTTP %s after %.1fs (try %d)", exc.status_code, time.perf_counter() - started, attempt)
-                    if exc.status_code not in RETRYABLE or attempt == MAX_TRIES:
+                    if exc.status_code not in RETRYABLE or attempt == MAX_TRIES or not can_retry():
                         raise _friendly(exc) from exc
                     wait = _retry_after(exc) or min(60.0, 2.0 ** attempt)
                     reason = "rate limited by the provider" if exc.status_code == 429 else "provider busy"
                 except (APIConnectionError, APITimeoutError) as exc:
                     log.warning("chat %s after %.1fs (try %d)", type(exc).__name__, time.perf_counter() - started, attempt)
-                    if attempt == MAX_TRIES:
+                    if attempt == MAX_TRIES or not can_retry():
                         raise LLMError(f"Could not reach {config.LLM_BASE_URL}: {exc}") from exc
                     wait, reason = min(60.0, 2.0 ** attempt), "connection problem"
             wait += random.uniform(0, 1)                   # jitter, so threads don't retry in lockstep
@@ -178,6 +189,55 @@ class LLM:
                 on_wait(wait, reason)
             time.sleep(wait)
         raise AssertionError("unreachable")
+
+    def chat(self, messages: list[dict], on_wait: OnWait | None = None, model: str | None = None, **kwargs):
+        """Chat completion with pacing and retries. Returns the full response (with .usage)."""
+        return self._call(
+            lambda: self.client.chat.completions.create(model=model or self.model, messages=messages, **kwargs), on_wait)
+
+    def chat_stream(self, messages: list[dict], on_delta: OnDelta, on_wait: OnWait | None = None, **kwargs) -> StreamResult:
+        """Stream a completion: `on_delta` gets each new piece of text as it arrives, and tool calls are
+        reassembled from their fragments. Retries only happen before the first piece of text, so
+        nothing is ever shown twice. Providers that refuse streaming fall back to one complete answer."""
+        shown = False
+
+        def run() -> StreamResult:
+            nonlocal shown
+            stream = self.client.chat.completions.create(model=self.model, messages=messages, stream=True, **kwargs)
+            parts: list[str] = []
+            calls: dict[int, dict] = {}
+            for chunk in stream:
+                if not getattr(chunk, "choices", None):
+                    continue
+                delta = chunk.choices[0].delta
+                text = getattr(delta, "content", None)
+                if text:
+                    shown = True
+                    parts.append(text)
+                    on_delta(text)
+                for tc in getattr(delta, "tool_calls", None) or []:
+                    acc = calls.setdefault(tc.index or 0, {"id": None, "name": "", "arguments": ""})
+                    acc["id"] = tc.id or acc["id"]
+                    if tc.function:
+                        acc["name"] += tc.function.name or ""
+                        acc["arguments"] += tc.function.arguments or ""
+            return StreamResult("".join(parts), [
+                {"id": c["id"] or f"call_{i}", "type": "function",
+                 "function": {"name": c["name"], "arguments": c["arguments"] or "{}"}}
+                for i, c in sorted(calls.items())])
+
+        try:
+            return self._call(run, on_wait, can_retry=lambda: not shown)
+        except LLMError as exc:
+            if shown or "stream" not in str(exc).lower():
+                raise
+        # The provider rejected streaming: one complete answer, delivered as a single piece.
+        msg = self.chat(messages, on_wait, **kwargs).choices[0].message
+        if msg.content:
+            on_delta(msg.content)
+        return StreamResult(msg.content or "", [
+            {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+            for tc in (msg.tool_calls or [])])
 
     def json(self, system: str, user: str, max_tokens: int = 200) -> tuple[dict, int, int]:
         """Ask for a JSON object. Returns (data, prompt_tokens, completion_tokens)."""

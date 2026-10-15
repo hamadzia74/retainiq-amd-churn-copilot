@@ -31,7 +31,8 @@ export default function Copilot() {
           onSuggest={submit} suggestDisabled={!online || busy} />
 
         <Composer onSend={submit} disabled={!online} busy={busy}
-          placeholder={online ? "Ask about customers, risk or campaigns…" : "LLM offline: the Copilot is paused"} />
+          placeholder={online ? "Ask about customers, risk or campaigns…" : "LLM offline: the Copilot is paused"}
+          voice={{ available: !!health?.voice_available, reason: "no audio-capable AI model on this provider" }} />
       </section>
     </>
   );

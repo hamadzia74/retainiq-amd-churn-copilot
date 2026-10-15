@@ -37,6 +37,10 @@ Rules:
 - ALWAYS use tools for numbers. Never invent customers, amounts or probabilities.
 - Money is USD. Be concise: short bullets, the key numbers, then a recommended next step."""
 
+TRANSCRIBE_PROMPT = ("Transcribe this audio exactly as spoken, in its original language. "
+                     "Reply with only the transcript: no quotes, labels or commentary. "
+                     "If there is no speech, reply with nothing.")
+
 SUGGEST_SYSTEM = """You suggest follow-up questions for RetainIQ, a retention copilot for an online clothing store.
 Given the user's latest question, the copilot's answer and the data behind it, write exactly 3 short
 questions the retention manager would most naturally ask NEXT.

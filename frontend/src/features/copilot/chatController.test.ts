@@ -5,18 +5,70 @@ import { createChat, type ChatDeps } from "./chatController";
 
 type Script = (h: ChatHandlers) => void | Promise<void>;
 
-function setup(script: Script, suggestions: SuggestionList = { suggestions: [{ text: "Why is James Patel at risk?" }], source: "llm" }) {
+function setup(script: Script, suggestions: SuggestionList = { suggestions: [{ text: "Why is James Patel at risk?" }], source: "llm" },
+               now?: () => number) {
   const signals: AbortSignal[] = [];
   const deps: ChatDeps = {
     stream: vi.fn(async (_s: string, _m: string, h: ChatHandlers) => { await script(h); }),
     suggest: vi.fn(async (_s: string, signal: AbortSignal) => { signals.push(signal); return suggestions; }),
     resetSession: vi.fn(async () => {}),
     newSessionId: (() => { let n = 0; return () => `s${++n}`; })(),
+    now,
   };
   return { chat: createChat(deps), deps, signals };
 }
 
-const answer: Script = (h) => { h.onTool("list_at_risk", { tier: "VIP" }); h.onAnswer("Your riskiest VIPs are James Patel and Mia Schneider."); };
+const answer: Script = (h) => {
+  h.onStep({ id: "tool-1", status: "done", label: "Looked up at-risk VIP customers", summary: "2 found" });
+  h.onAnswer("Your riskiest VIPs are James Patel and Mia Schneider.");
+};
+
+describe("chat controller: streaming and progress steps", () => {
+  it("joins streamed pieces into the answer, then takes the final answer as authoritative", async () => {
+    const seen: string[] = [];
+    const { chat } = setup((h) => {
+      h.onDelta("Your riskiest ");
+      seen.push(chat.getState().messages.at(-1)!.text);
+      h.onDelta("VIPs are…");
+      seen.push(chat.getState().messages.at(-1)!.text);
+      h.onAnswer("Your riskiest VIPs are James Patel and Mia Schneider.");
+    });
+    await chat.send("Which VIPs are at risk?");
+    expect(seen).toEqual(["Your riskiest ", "Your riskiest VIPs are…"]);
+    expect(chat.getState().messages.at(-1)!.text).toBe("Your riskiest VIPs are James Patel and Mia Schneider.");
+  });
+
+  it("drops a streamed preamble when the stream says so", async () => {
+    const { chat } = setup((h) => { h.onDelta("Let me check… "); h.onDeltaReset(); h.onDelta("Done."); h.onAnswer("Done."); });
+    await chat.send("hi");
+    expect(chat.getState().messages.at(-1)!.text).toBe("Done.");
+  });
+
+  it("keeps steps in order, updates them by id, and removes cancelled ones", async () => {
+    let at = 0;
+    const { chat } = setup((h) => {
+      h.onStep({ id: "think", status: "running", label: "Understanding your question" });
+      h.onStep({ id: "think", status: "done", label: "Understood your question", ms: 400 });
+      h.onStep({ id: "write", status: "running", label: "Writing the answer" });
+      h.onStep({ id: "write", status: "cancelled", label: "Writing the answer" });
+      h.onStep({ id: "tool-1", status: "running", label: "Checking your dashboard" });
+      h.onStep({ id: "tool-1", status: "done", label: "Checked your dashboard", summary: "$27,468 at risk", ms: 800 });
+      at = 4200;
+      h.onAnswer("Done.");
+    }, undefined, () => at);
+    await chat.send("How are we doing?");
+    const reply = chat.getState().messages.at(-1)!;
+    expect(reply.steps.map((s) => [s.id, s.status, s.label])).toEqual([
+      ["think", "done", "Understood your question"], ["tool-1", "done", "Checked your dashboard"]]);
+    expect(reply.durationMs).toBe(4200);
+  });
+
+  it("never leaves a step spinning once the answer has ended", async () => {
+    const { chat } = setup((h) => { h.onStep({ id: "tool-1", status: "running", label: "Checking your dashboard" }); h.onError("boom"); });
+    await chat.send("hi");
+    expect(chat.getState().messages.at(-1)!.steps[0].status).toBe("failed");
+  });
+});
 
 describe("chat controller: follow-up suggestions", () => {
   it("requests suggestions exactly once after a finished answer, for this session", async () => {

@@ -1,5 +1,5 @@
 import type {
-  AtRiskRow, Customer360, Dashboard, EnrichStatus, Health, ModelInfo, Plan, SuggestionList, Tier, WinBackMessage,
+  AtRiskRow, Customer360, Dashboard, EnrichStatus, Health, ModelInfo, Plan, SuggestionList, Tier, Transcript, WinBackMessage,
 } from "./types";
 
 export class ApiError extends Error {
@@ -55,5 +55,8 @@ export const api = {
   /** Follow-up questions for the session's latest exchange (one call per finished answer). */
   suggestions: (sessionId: string, signal?: Signal) =>
     request<SuggestionList>("/agent/suggestions", { method: "POST", body: JSON.stringify({ session_id: sessionId }), signal }),
+  /** Voice input: a 16 kHz mono WAV recording in, its transcript out (transcribed on AMD). */
+  transcribe: (wav: Blob, signal?: Signal) =>
+    request<Transcript>("/agent/transcribe", { method: "POST", body: wav, headers: { "Content-Type": "audio/wav" }, signal }),
   resetChat: (sessionId: string) => request<void>(`/agent/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
 };

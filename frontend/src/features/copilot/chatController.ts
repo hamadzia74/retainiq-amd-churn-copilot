@@ -1,21 +1,18 @@
 // Copilot chat state as a small framework-free controller (unit-tested in chatController.test.ts;
-// React reads it through useChat). Owns the rule "one suggestions request per finished answer".
+// React reads it through useChat). Owns: streamed answer text, plain-English progress steps, and
+// the rule "one suggestions request per finished answer".
 import type { ChatHandlers } from "../../api/sse";
-import type { SuggestionList } from "../../api/types";
-
-export interface ToolCall {
-  name: string;
-  args: Record<string, unknown>;
-}
+import type { AgentStep, SuggestionList } from "../../api/types";
 
 export interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   text: string;
-  tools: ToolCall[];
+  steps: AgentStep[];              // progress trace (assistant only), matched by step id
   error?: boolean;
-  pending?: boolean;
+  pending?: boolean;               // still being answered (text may be streaming in)
   status?: string;                 // e.g. "rate limited by the provider, retrying in 12s"
+  durationMs?: number;             // total time to answer, for "How I got this · 4.2s"
   suggestions?: string[];          // follow-ups for this answer (only the latest answer shows them)
   suggestionsLoading?: boolean;
 }
@@ -30,9 +27,18 @@ export interface ChatDeps {
   suggest: (sessionId: string, signal: AbortSignal) => Promise<SuggestionList>;
   resetSession: (sessionId: string) => Promise<void>;
   newSessionId: () => string;
+  now?: () => number;
+}
+
+/** Insert or replace a step by id; a cancelled step is removed (e.g. "writing" that turned out to be a preamble). */
+export function upsertStep(steps: AgentStep[], step: AgentStep): AgentStep[] {
+  if (step.status === "cancelled") return steps.filter((s) => s.id !== step.id);
+  const i = steps.findIndex((s) => s.id === step.id);
+  return i < 0 ? [...steps, step] : steps.map((s, j) => (j === i ? { ...s, ...step } : s));
 }
 
 export function createChat(deps: ChatDeps) {
+  const now = deps.now ?? (() => performance.now());
   let state: ChatState = { messages: [], busy: false };
   const listeners = new Set<() => void>();
   let session = deps.newSessionId();
@@ -73,14 +79,17 @@ export function createChat(deps: ChatDeps) {
     const question = text.trim();
     if (state.busy || !question) return;
     dropSuggestions();
-    const user: ChatMessage = { id: nextId++, role: "user", text: question, tools: [] };
-    const reply: ChatMessage = { id: nextId++, role: "assistant", text: "", tools: [], pending: true };
+    const user: ChatMessage = { id: nextId++, role: "user", text: question, steps: [] };
+    const reply: ChatMessage = { id: nextId++, role: "assistant", text: "", steps: [], pending: true };
     const sessionId = session;
+    const started = now();
     set({ busy: true, messages: [...state.messages, user, reply] });
 
     try {
       await deps.stream(sessionId, question, {
-        onTool: (name, args) => patch(reply.id, (m) => ({ ...m, tools: [...m.tools, { name, args }] })),
+        onStep: (step) => patch(reply.id, (m) => ({ ...m, steps: upsertStep(m.steps, step) })),
+        onDelta: (piece) => patch(reply.id, (m) => ({ ...m, text: m.text + piece, status: undefined })),
+        onDeltaReset: () => patch(reply.id, (m) => ({ ...m, text: "" })),
         onAnswer: (answer) => patch(reply.id, (m) => ({ ...m, text: answer, status: undefined })),
         onStatus: (status) => patch(reply.id, (m) => ({ ...m, status })),
         onError: (message) => patch(reply.id, (m) => ({ ...m, text: message, error: true })),
@@ -89,7 +98,11 @@ export function createChat(deps: ChatDeps) {
       patch(reply.id, (m) => ({ ...m, text: (e as Error).message, error: true }));
     }
     if (session !== sessionId) return;                       // "New chat" happened meanwhile
-    patch(reply.id, (m) => ({ ...m, pending: false }));
+    // Anything still marked running when the stream ends didn't finish: show it as done-ish, not spinning forever.
+    patch(reply.id, (m) => ({
+      ...m, pending: false, status: undefined, durationMs: Math.round(now() - started),
+      steps: m.steps.map((s) => (s.status === "running" ? { ...s, status: m.error ? "failed" : "done" } : s)),
+    }));
     set({ busy: false });
 
     // Exactly one suggestions request per finished answer - never after an error or an empty reply.

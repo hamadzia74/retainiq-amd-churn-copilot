@@ -22,6 +22,7 @@ export interface Health {
   llm_label: string;
   llm_share: number;
   quota: Quota | null;
+  voice_available: boolean;
   active_customers: number;
 }
 
@@ -151,6 +152,20 @@ export interface ModelInfo {
   n_train: number;
   base_rate: number;
   weights: Weight[];
+}
+
+/** One plain-English progress step of a Copilot answer (see retainiq/steps.py). */
+export interface AgentStep {
+  id: string;
+  status: "running" | "done" | "failed" | "cancelled";
+  label: string;
+  summary?: string;
+  details?: string[];
+  ms?: number;
+}
+
+export interface Transcript {
+  text: string;
 }
 
 export interface SuggestionList {

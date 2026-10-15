@@ -178,9 +178,14 @@ export const TOURS: Tour[] = [
         body: "Write here and press Enter to send. You can paste an example below; the tour will never send it for you.",
       },
       {
+        target: "mic-button",
+        title: "Ask by voice",
+        body: "Tap the microphone, ask your question, then tap stop. It's transcribed on AMD and put in the box, so you can check it before you press Send.",
+      },
+      {
         target: "message-list",
         title: "How answers arrive",
-        body: "Answers appear here. Above each one you'll see which tools the Copilot used, so you know where the numbers came from.",
+        body: "The answer streams in as it's written. Above it, a short trace shows each step the Copilot took. Tap the arrow to open or close it.",
       },
       {
         target: "message-list",

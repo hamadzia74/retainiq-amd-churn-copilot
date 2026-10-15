@@ -28,6 +28,7 @@ class Health(BaseModel):
     llm_label: str
     llm_share: float
     quota: Quota | None
+    voice_available: bool
     active_customers: int
 
 
@@ -208,6 +209,10 @@ class Suggestion(BaseModel):
 class Suggestions(BaseModel):
     suggestions: list[Suggestion]
     source: Literal["llm", "rules"]
+
+
+class Transcript(BaseModel):
+    text: str
 
 
 class ChatRequest(BaseModel):

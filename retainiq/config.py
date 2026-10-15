@@ -39,6 +39,7 @@ PROFILES = {
         "concurrency": 7,
         "rpm": 18,
         "batch_size": 50,
+        "transcribe_model": "MiMo-V2.6-Flash",   # the free model that accepts audio
     },
     # Our own GPU: no rate limits, so many small concurrent requests (vLLM batches them).
     "vllm": {
@@ -49,6 +50,7 @@ PROFILES = {
         "concurrency": 32,
         "rpm": 0,               # 0 = unlimited
         "batch_size": 1,
+        "transcribe_model": "",                  # our vLLM model takes text only: no voice
     },
 }
 
@@ -71,3 +73,4 @@ LLM_HARDWARE = _env("LLM_HARDWARE", _p["hardware"])
 LLM_CONCURRENCY = _env("LLM_CONCURRENCY", _p["concurrency"])
 LLM_RPM = _env("LLM_RPM", _p["rpm"])
 LLM_BATCH_SIZE = _env("LLM_BATCH_SIZE", _p["batch_size"])
+LLM_TRANSCRIBE_MODEL = _env("LLM_TRANSCRIBE_MODEL", _p["transcribe_model"])

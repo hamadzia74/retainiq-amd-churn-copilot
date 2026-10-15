@@ -161,8 +161,16 @@ profile, run it on the MI300X droplet next to `scripts/serve_amd.sh`.
 | `POST /api/campaigns/plan` `{budget}` | Budget-optimized campaign |
 | `GET /api/model` | Model weights and accuracy |
 | `POST /api/enrich` · `GET /api/enrich/status` | LLM enrichment on AMD as a background job (409 if already running) |
-| `POST /api/agent/chat` `{session_id, message}` | Copilot, streamed as Server-Sent Events: `tool` → `answer` → `done` |
+| `POST /api/agent/chat` `{session_id, message}` | Copilot, streamed as Server-Sent Events: `step` (progress) · `delta` (answer text) → `answer` → `done` |
+| `POST /api/agent/transcribe` (WAV body) | Voice input: 16 kHz mono WAV up to 60 s → transcript, using MiMo-V2.6-Flash on AMD Token Factory |
 | `POST /api/agent/suggestions` `{session_id}` | 3 follow-up questions for the latest exchange, `source: llm` or `rules` |
+
+**Copilot progress, streaming and voice.** Answers stream in word by word. Above each one, a collapsible
+"How I got this" trace lists the steps the Copilot took in plain English ("Looked up at-risk VIP customers:
+3 found, led by James Patel (63%)"), built from its real tool calls with no extra AI cost. The trace is open
+while it works and collapses when it's done, and each step expands for details. The mic in the input bar records
+a question (up to 60 s), transcribes it on AMD, and places the text in the box so you can check it before
+pressing Send. Recordings are never stored.
 
 **Copilot follow-ups.** After each answer the Copilot shows three suggested next questions;
 tapping one sends it straight away. The LLM writes them from the question, the answer and the
