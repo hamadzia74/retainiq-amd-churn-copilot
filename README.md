@@ -120,11 +120,24 @@ python main.py
 A FastAPI backend (`api/`) and a React frontend (`frontend/`) sit on top of the same `Engine`.
 They don't change what the system calculates. They only add HTTP and a browser UI.
 
-| Dashboard | Customer 360 |
+| Dashboard (dark) | Campaign planner (light) |
 |---|---|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Customer 360](docs/screenshots/customer-360.png) |
-| **Campaign planner** | **Powered by AMD** |
-| ![Campaign](docs/screenshots/campaign.png) | ![AMD](docs/screenshots/amd.png) |
+| ![Dashboard](docs/screenshots/dashboard-dark-1440.png) | ![Campaign](docs/screenshots/campaign-light-1440.png) |
+| **Guided tour step** | **Powered by AMD** |
+| ![Guided tour](docs/screenshots/tour-step-light-1440.png) | ![AMD](docs/screenshots/amd-dark-1440.png) |
+
+Every page is in [`docs/screenshots/`](docs/screenshots/) at 390px (phone) and 1440px, in light
+and dark: `<page>-<theme>-<width>.png`.
+
+**Light, dark and system themes** sit in the sidebar (or the mobile menu). The choice is remembered.
+
+**Guided Tours** (header button, or the book icon on phones) walk through each module:
+Dashboard, Customers (At-risk list, Customer 360), Campaign planner, Copilot and Powered by AMD.
+A spotlight moves across the real page while a step card explains it, and each step is **read
+aloud** with the browser's built-in speech. Narration is on by default; the speaker button mutes it,
+and that choice is remembered. Tours are read-only: the page is locked while a tour runs, so they
+never submit, draft, enrich or chat for you. Esc closes a tour, ← and → move between steps, and
+completed tours get a ✓.
 
 **Development** (two terminals):
 
@@ -142,7 +155,7 @@ profile, run it on the MI300X droplet next to `scripts/serve_amd.sh`.
 |---|---|
 | `GET /api/health` | LLM status, model, hardware, share of LLM-extracted signals |
 | `GET /api/dashboard` | KPIs, CV ROC-AUC (orders only vs. with text), top complaints |
-| `GET /api/customers/at-risk?limit&tier&sort=prob\|value` | At-risk list with reasons |
+| `GET /api/customers/at-risk?limit&offset&tier&sort=prob\|value` | At-risk list with reasons, paged |
 | `GET /api/customers/{id}` | Customer 360: contributions, messages, orders, best action |
 | `POST /api/customers/{id}/message` | Win-back message (`source: llm` or `template`) |
 | `POST /api/campaigns/plan` `{budget}` | Budget-optimized campaign |
@@ -154,9 +167,34 @@ When the LLM is unavailable, `/api/enrich` and `/api/agent/chat` return 503 with
 (unreachable, bad key, model retired), and every other endpoint keeps working on the keyword
 fallback. `/api/health` reports the provider and the remaining daily quota. `/api/enrich/status`
 returns the plan for the next run (pending messages, requests, estimated minutes). Chat streams
-`status` events while it waits on a rate limit. Tests: `pytest -q`. They cover every
-endpoint with the LLM offline, the enrich job and SSE chat against a mocked LLM, and the rate
-limiter, 429 retries, batch parsing and resume logic. Tests never call the real endpoint.
+`status` events while it waits on a rate limit.
+
+**API calls are kept to one per data need.** All cache keys and fetch options live in
+`frontend/src/api/queries.ts`:
+- **Model-derived data** (dashboard, customers, plans, weights) never goes stale on a timer. It
+  refreshes once, when an enrichment run finishes.
+- **Health and quota** are polled at most once a minute, only while the tab is visible. The
+  server caches the provider lookups, so polling never turns into Token Factory traffic.
+- **"Show more"** fetches only the next page (`offset`). The dashboard's top 5 reuses the
+  Customers page's first page.
+- **The budget slider** is debounced, and budgets you've already tried come from cache.
+- **Housekeeping:** superseded requests are cancelled, and 4xx errors aren't retried.
+
+The same scripted session went from 21 requests to 12:
+
+| Interaction | Before | After |
+|---|---|---|
+| Customers page after the dashboard | 1 | 0 |
+| Show more | 1 (re-downloaded rows 1–25) | 1 (only the next 25) |
+| Opening a customer | 2 | 1 |
+| Copilot page | 1 | 0 |
+| Idle 2 minutes | 8 | 2 |
+
+**Tests** never call the real LLM endpoint:
+- **`pytest -q`:** every endpoint with the LLM offline, the enrich job and SSE chat against a
+  mocked LLM, the rate limiter, 429 retries, batch parsing, resume, health/quota caching and paging.
+- **`cd frontend && npm test` (Vitest):** tour catalogue integrity, card placement, the tour store,
+  narration (never overlaps), chart label layout and the data layer's request behaviour.
 
 ## Commands
 
@@ -194,11 +232,16 @@ api/
   schemas.py            Pydantic request/response models
   routers/              system · dashboard · customers · campaigns · model · enrich · agent
 frontend/src/
-  api/                  typed client, types mirroring schemas.py, SSE reader
-  hooks/                TanStack Query hooks, enrichment poller, chat state
-  components/           Layout, KPI cards, risk bars, charts, timeline, action card
-  pages/                Dashboard · Customers · Customer360 · Campaign · Copilot · Amd (lazy-loaded)
-tests/                  API tests (LLM offline) + LLM paths with a mocked client
+  app/                  providers (theme, query cache, router, motion) and lazy routes
+  api/                  typed client, query keys + cache rules (queries.ts), SSE reader
+  components/ui/        generic building blocks: Button, Card, Badge, Stat, Drawer, ProgressBar, …
+  components/layout/    AppShell, Sidebar, MobileNav, header
+  components/charts/    lazy, theme-aware Recharts charts with responsive label layout
+  features/             customers · dashboard · campaign · copilot · amd · tours
+  features/tours/       Guided Tours: catalogue, store, placement, narration, runner, panel
+  hooks/ theme/ motion/ shared hooks, light/dark/system theme, animation variants
+  pages/                thin compositions, one lazy chunk each
+tests/                  API tests (LLM offline), LLM paths with a mocked client, caching and paging
 scripts/serve_amd.sh    vLLM on ROCm / MI300X
 scripts/run_web.sh      build React + serve everything on one port
 ```

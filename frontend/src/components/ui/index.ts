@@ -4,6 +4,7 @@ export { Button, type ButtonProps } from "./Button";
 export { Card, CardHeader, PageHeader } from "./Card";
 export { Drawer } from "./Drawer";
 export { EmptyState, ErrorState, Loading, Notice, Skeleton, Spinner } from "./feedback";
+export { Modal } from "./Modal";
 export { ProgressBar } from "./ProgressBar";
 export { Segmented, type SegmentOption } from "./Segmented";
 export { CountUp, Stat, StatGrid, type StatTone } from "./Stat";

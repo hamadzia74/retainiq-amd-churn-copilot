@@ -12,7 +12,7 @@ const steps = (llm: string): [string, string, string][] => [
 
 export function PipelineSteps({ provider }: { provider: string }) {
   return (
-    <Card className="mt-4" title="Pipeline">
+    <Card className="mt-4" tour="amd-pipeline" title="Pipeline">
       <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {steps(provider).map(([title, text, border], i) => (
           <motion.li key={i} variants={rowVariants} custom={i} initial="hidden" animate="show"

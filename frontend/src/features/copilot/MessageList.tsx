@@ -14,7 +14,7 @@ export function MessageList({ messages, empty }: { messages: Message[]; empty: R
   const { ref, atBottom, onScroll, scrollToBottom } = useAutoScroll<HTMLDivElement>(messages);
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div data-tour="message-list" className="relative min-h-0 flex-1">
       <div ref={ref} onScroll={onScroll} className="absolute inset-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
         {messages.length === 0 ? empty : (
           <div className="space-y-4">

@@ -55,6 +55,11 @@ for r in (system, dashboard, customers, campaigns, model, enrich, agent):
 
 
 # Production: serve the built React app from the same origin (one URL for judges).
+# index.html must never be cached, or browsers keep loading an old build after a rebuild.
+# Files under assets/ have a content hash in their name, so they can be cached for good.
+NO_CACHE = {"Cache-Control": "no-cache"}
+IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
 if DIST.exists():
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
@@ -62,5 +67,5 @@ if DIST.exists():
             raise HTTPException(404, "Not found")
         file = (DIST / path).resolve()
         if path and file.is_file() and file.is_relative_to(DIST.resolve()):
-            return FileResponse(file)
-        return FileResponse(DIST / "index.html")       # client-side routes
+            return FileResponse(file, headers=IMMUTABLE if path.startswith("assets/") else NO_CACHE)
+        return FileResponse(DIST / "index.html", headers=NO_CACHE)       # client-side routes

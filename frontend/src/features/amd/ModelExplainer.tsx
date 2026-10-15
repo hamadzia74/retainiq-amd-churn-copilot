@@ -1,12 +1,10 @@
 import type { ModelInfo } from "../../api/types";
 import { ContributionChart } from "../../components/charts";
 import { Card } from "../../components/ui";
-import { useIsMobile } from "../../hooks/useMediaQuery";
 
 export function ModelExplainer({ model }: { model: ModelInfo }) {
-  const isMobile = useIsMobile();
   return (
-    <Card className="mt-4" title="How churn is predicted"
+    <Card className="mt-4" tour="amd-model" title="How churn is predicted"
       subtitle={`Logistic regression · trained on ${model.n_train.toLocaleString()} customers · CV ROC-AUC ${model.auc_full.toFixed(3)} (orders only ${model.auc_orders_only.toFixed(3)})`}>
       <div className="grid gap-4 lg:grid-cols-2">
         <ol className="list-decimal space-y-1.5 pl-5 text-sm text-soft">
@@ -17,7 +15,7 @@ export function ModelExplainer({ model }: { model: ModelInfo }) {
           <li>Explain each customer with coefficient × standardised value.</li>
         </ol>
         <ContributionChart data={model.weights.map((w) => ({ label: w.label, value: w.weight }))}
-          height={isMobile ? 280 : 340} unit="weight" />
+          unit="weight" />
       </div>
     </Card>
   );

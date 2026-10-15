@@ -6,7 +6,6 @@ import { MessageTimeline } from "../features/customers/MessageTimeline";
 import { RiskBadge, RiskBar, TierBadge } from "../features/customers/risk";
 import { WinBackCard } from "../features/customers/WinBackCard";
 import { useCustomer, useHealth } from "../hooks/queries";
-import { useIsMobile } from "../hooks/useMediaQuery";
 import { LANGUAGE, money, pct } from "../lib/format";
 
 function Fact({ k, v }: { k: string; v: string }) {
@@ -22,7 +21,6 @@ export default function Customer360() {
   const { id = "" } = useParams();
   const { data: c, error, isLoading } = useCustomer(id);
   const { data: health } = useHealth();
-  const isMobile = useIsMobile();
 
   if (isLoading) return <Loading what="Loading customer" />;
   if (error || !c) return <ErrorState error={error ?? "Not found"} />;
@@ -35,7 +33,7 @@ export default function Customer360() {
     <>
       <Link to="/customers" className="text-sm text-muted hover:text-strong">← At-risk customers</Link>
 
-      <Card className="mt-3">
+      <Card className="mt-3" tour="c360-header">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -66,17 +64,17 @@ export default function Customer360() {
       </Card>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card title="Why the model says so" subtitle="Effect on log-odds of churn = coefficient × standardised value. Red pushes toward churn.">
-          <ContributionChart data={contribs} height={isMobile ? 240 : 280} />
+        <Card tour="c360-why" title="Why the model says so" subtitle="Effect on log-odds of churn = coefficient × standardised value. Red pushes toward churn.">
+          <ContributionChart data={contribs} />
         </Card>
         <div className="space-y-4">
-          <ActionCard action={c.recommended_action} />
+          <div data-tour="c360-action"><ActionCard action={c.recommended_action} /></div>
           <WinBackCard customer={c} />
         </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3" title="Tickets & reviews (180 days)" subtitle="Sentiment, category and threat extracted from each message"
+        <Card className="lg:col-span-3" tour="c360-timeline" title="Tickets & reviews (180 days)" subtitle="Sentiment, category and threat extracted from each message"
           action={<Source kind={(health?.llm_share ?? 0) > 0 ? "llm" : "heuristic"} />}>
           <MessageTimeline items={c.recent_messages} />
         </Card>

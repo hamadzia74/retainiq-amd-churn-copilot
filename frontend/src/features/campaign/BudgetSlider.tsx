@@ -6,7 +6,7 @@ export const BUDGET_MAX = 5000;
 
 export function BudgetSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <Card>
+    <Card tour="budget-slider">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="text-sm text-soft" htmlFor="budget">Marketing budget</label>
         <span className="text-3xl font-semibold tabular-nums text-strong">{money(value)}</span>

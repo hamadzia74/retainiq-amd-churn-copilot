@@ -1,18 +1,18 @@
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Skeleton } from "../../components/ui";
-import { useAtRisk } from "../../hooks/queries";
+import { useTopAtRisk } from "../../hooks/queries";
 import { money } from "../../lib/format";
 import { rowVariants } from "../../motion/variants";
 import { RiskBar, TierBadge } from "../customers/risk";
 
 /** The five customers with the most revenue at stake. */
 export function TopAtRisk() {
-  const { data } = useAtRisk({ limit: 5, sort: "value" });
-  if (!data) return <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-9" />)}</div>;
+  const rows = useTopAtRisk(5);
+  if (!rows) return <div className="space-y-2">{[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-9" />)}</div>;
   return (
     <ul className="divide-y divide-line">
-      {data.map((c, i) => (
+      {rows.map((c, i) => (
         <motion.li key={c.customer_id} variants={rowVariants} custom={i} initial="hidden" animate="show">
           <Link to={`/customers/${c.customer_id}`}
             className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 py-2.5 hover:bg-hover sm:flex">

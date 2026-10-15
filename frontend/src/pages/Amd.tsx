@@ -21,7 +21,7 @@ export default function Amd() {
         model, never from the LLM.
       </PageHeader>
 
-      <StatGrid>
+      <StatGrid tour="amd-status">
         <Stat label="Status" value={h?.llm_available ? "Online" : "Offline"} tone={h?.llm_available ? "green" : "amber"}
           hint={h?.llm_available ? provider : h?.llm_problem ?? undefined} />
         <Stat label="Model" value={<span className="text-base">{h?.llm_model ?? "-"}</span>} />

@@ -7,7 +7,7 @@ export const STARTERS = [
 
 export function StarterPrompts({ onPick, disabled }: { onPick: (text: string) => void; disabled: boolean }) {
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
+    <div data-tour="starter-prompts" className="grid gap-2 sm:grid-cols-2">
       {STARTERS.map((s) => (
         <button key={s} type="button" disabled={disabled} onClick={() => onPick(s)}
           className="rounded-lg border border-line p-3 text-left text-sm text-soft transition-colors hover:border-amd/60 hover:bg-hover disabled:opacity-50">

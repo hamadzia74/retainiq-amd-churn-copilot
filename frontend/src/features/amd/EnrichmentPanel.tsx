@@ -14,7 +14,7 @@ export function EnrichmentPanel({ health }: { health?: Health }) {
   const progress = status?.total ? status.done / status.total : 0;
 
   return (
-    <Card className="mt-4" title={`Read tickets & reviews on ${provider}`}
+    <Card className="mt-4" tour="amd-enrichment" title={`Read tickets & reviews on ${provider}`}
       subtitle="Packs many messages into each request, stays under the provider's rate limits, then retrains the churn model. Progress is saved after every batch, so a stopped run resumes."
       action={
         <div className="flex flex-wrap gap-2">

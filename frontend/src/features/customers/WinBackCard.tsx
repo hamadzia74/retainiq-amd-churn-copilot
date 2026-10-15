@@ -13,7 +13,7 @@ export function WinBackCard({ customer }: { customer: Customer360 }) {
   const lang = LANGUAGE[customer.language] ?? customer.language;
 
   return (
-    <Card title="Win-back message" subtitle={`Written in ${lang}, with the offer above`}
+    <Card tour="c360-winback" title="Win-back message" subtitle={`Written in ${lang}, with the offer above`}
       action={msg && <Source kind={msg.source} />}>
       <AnimatePresence mode="wait" initial={false}>
         {msg ? (

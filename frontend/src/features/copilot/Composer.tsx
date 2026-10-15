@@ -37,7 +37,7 @@ export function Composer({ onSend, disabled, busy, placeholder }: {
   };
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); send(); }}
+    <form data-tour="composer" onSubmit={(e) => { e.preventDefault(); send(); }}
       className="shrink-0 border-t border-line bg-panel px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
       <div className="flex items-end gap-2 rounded-xl border border-line bg-field p-1.5 pl-3 transition-colors focus-within:border-amd/60">
         <textarea ref={field} rows={1} value={text} disabled={disabled} aria-label="Message"

@@ -19,12 +19,12 @@ export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
   );
 }
 
-/** Panel surface. Pass title/subtitle/action for the standard header. */
-export function Card({ title, subtitle, action, children, className = "", padded = true }: CardHeaderProps & {
-  children: ReactNode; className?: string; padded?: boolean;
+/** Panel surface. Pass title/subtitle/action for the standard header; `tour` anchors a guided-tour step. */
+export function Card({ title, subtitle, action, children, className = "", padded = true, tour }: CardHeaderProps & {
+  children: ReactNode; className?: string; padded?: boolean; tour?: string;
 }) {
   return (
-    <section className={`rounded-xl border border-line bg-panel ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
+    <section data-tour={tour} className={`min-w-0 rounded-xl border border-line bg-panel ${padded ? "p-4 sm:p-5" : ""} ${className}`}>
       <CardHeader title={title} subtitle={subtitle} action={action} />
       {children}
     </section>

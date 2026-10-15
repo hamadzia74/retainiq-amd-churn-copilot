@@ -17,9 +17,11 @@ SORT = {"prob": "churn_prob", "value": "value_at_risk"}
 @router.get("/at-risk", response_model=list[AtRiskRow])
 def at_risk(engine: EngineDep,
             limit: Annotated[int, Query(ge=1, le=200)] = 25,
+            offset: Annotated[int, Query(ge=0, le=1000)] = 0,
             tier: Tier | None = None,
             sort: Literal["prob", "value"] = "prob"):
-    return ser.at_risk(engine.at_risk(limit, tier, SORT[sort]))
+    """One page of the at-risk list. `offset` lets "Show more" fetch only the next page."""
+    return ser.at_risk(engine.at_risk(offset + limit, tier, SORT[sort]).iloc[offset:])
 
 
 @router.get("/{customer_id}", response_model=Customer360)

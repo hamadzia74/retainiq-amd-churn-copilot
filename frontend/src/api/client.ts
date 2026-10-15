@@ -8,10 +8,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** Every request takes an optional AbortSignal, so superseded requests are cancelled. */
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...init.headers },
   });
   if (!res.ok) {
     let detail = res.statusText;
@@ -27,24 +28,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export interface AtRiskParams {
-  limit?: number;
   tier?: Tier | "";
   sort?: "prob" | "value";
+  limit?: number;
+  offset?: number;
 }
 
+type Signal = AbortSignal | undefined;
+
 export const api = {
-  health: () => request<Health>("/health"),
-  dashboard: () => request<Dashboard>("/dashboard"),
-  atRisk: ({ limit = 25, tier, sort = "prob" }: AtRiskParams = {}) => {
+  health: (signal?: Signal) => request<Health>("/health", { signal }),
+  dashboard: (signal?: Signal) => request<Dashboard>("/dashboard", { signal }),
+  atRisk: ({ tier, sort = "prob", limit = 25, offset = 0 }: AtRiskParams = {}, signal?: Signal) => {
     const q = new URLSearchParams({ limit: String(limit), sort });
+    if (offset) q.set("offset", String(offset));
     if (tier) q.set("tier", tier);
-    return request<AtRiskRow[]>(`/customers/at-risk?${q}`);
+    return request<AtRiskRow[]>(`/customers/at-risk?${q}`, { signal });
   },
-  customer: (id: string) => request<Customer360>(`/customers/${encodeURIComponent(id)}`),
+  customer: (id: string, signal?: Signal) => request<Customer360>(`/customers/${encodeURIComponent(id)}`, { signal }),
   message: (id: string) => request<WinBackMessage>(`/customers/${encodeURIComponent(id)}/message`, { method: "POST" }),
-  plan: (budget: number) => request<Plan>("/campaigns/plan", { method: "POST", body: JSON.stringify({ budget }) }),
-  model: () => request<ModelInfo>("/model"),
+  plan: (budget: number, signal?: Signal) =>
+    request<Plan>("/campaigns/plan", { method: "POST", body: JSON.stringify({ budget }), signal }),
+  model: (signal?: Signal) => request<ModelInfo>("/model", { signal }),
   startEnrich: (force = false) => request<EnrichStatus>(`/enrich?force=${force}`, { method: "POST" }),
-  enrichStatus: () => request<EnrichStatus>("/enrich/status"),
+  enrichStatus: (signal?: Signal) => request<EnrichStatus>("/enrich/status", { signal }),
   resetChat: (sessionId: string) => request<void>(`/agent/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
 };

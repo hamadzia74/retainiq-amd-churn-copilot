@@ -2,10 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
+import { shouldRetry } from "../api/queries";
 import { ThemeProvider } from "../theme/ThemeProvider";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: { queries: { staleTime: 60_000, retry: shouldRetry, refetchOnWindowFocus: false } },
 });
 
 /** Everything the app needs around it: theme, data cache, routing, motion settings. */
