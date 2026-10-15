@@ -2,10 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="description" content="RetainIQ - churn-prevention copilot for online retailers, powered by AMD" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23ed1c24'/><path d='M9 22V10h7a4 4 0 0 1 0 8h-7m7 0 5 4' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
     <title>RetainIQ</title>
+    <!-- Pick the theme before the first paint, so a refresh never flashes the wrong colours.
+         Must match theme/ThemeProvider.tsx (same storage key and values). -->
+    <script>
+      (function () {
+        var mode = "system";
+        try { mode = localStorage.getItem("retainiq-theme") || "system"; } catch (e) {}
+        var dark = mode === "dark" || (mode !== "light" &&
+          !(window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches));
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

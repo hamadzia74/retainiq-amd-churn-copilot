@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/* ==================================================================== tokens
+   Every colour in the app is a token. Dark = the original RetainIQ look,
+   value for value. Light = the same design on light surfaces.
+   Components use only these names (bg-panel, text-muted, ...), never raw colours. */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --amd: #ed1c24;
+  --amd-dark: #b3141a;
+  --amd-fg: #ed1c24;                 /* AMD red used as text/link colour */
+
+  --ink: #0b0d12;                    /* app background */
+  --panel: #13161e;                  /* cards, sidebar */
+  --line: #232836;
+  --field: #0b0d12;                  /* solid input background */
+  --sunken: rgb(0 0 0 / 0.22);       /* insets inside cards */
+  --hover: rgb(255 255 255 / 0.04);
+  --track: #1e293b;                  /* empty part of bars */
+  --spinner: #475569;
+
+  --strong: #ffffff;                 /* headings, names */
+  --fg: #e2e8f0;                     /* body text */
+  --soft: #cbd5e1;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+
+  --risk-high: #ef4444;
+  --risk-mid: #f59e0b;
+  --risk-low: #10b981;
+  --risk-high-fg: #ef4444;
+  --risk-mid-fg: #f59e0b;
+  --risk-low-fg: #10b981;
+  --positive: #34d399;
+  --negative: #f87171;
+  --warning: #fcd34d;
+
+  --good-bg: rgb(2 44 34 / 0.4);
+  --good-fg: #a7f3d0;
+  --good-fg-soft: rgb(110 231 183 / 0.7);
+  --error-bg: rgb(69 10 10 / 0.4);
+  --error-line: #7f1d1d;
+  --error-fg: #fca5a5;
+  --notice-bg: rgb(69 26 3 / 0.4);
+  --notice-line: #78350f;
+  --notice-fg: #fde68a;
+  --user-bubble: rgb(237 28 36 / 0.2);
+
+  --tone-red-bg: rgb(239 68 68 / 0.15);     --tone-red-fg: #fca5a5;     --tone-red-ring: rgb(239 68 68 / 0.3);
+  --tone-amber-bg: rgb(245 158 11 / 0.15);  --tone-amber-fg: #fcd34d;   --tone-amber-ring: rgb(245 158 11 / 0.3);
+  --tone-green-bg: rgb(16 185 129 / 0.15);  --tone-green-fg: #6ee7b7;   --tone-green-ring: rgb(16 185 129 / 0.3);
+  --tone-violet-bg: rgb(139 92 246 / 0.15); --tone-violet-fg: #c4b5fd;  --tone-violet-ring: rgb(139 92 246 / 0.3);
+  --tone-sky-bg: rgb(14 165 233 / 0.15);    --tone-sky-fg: #7dd3fc;     --tone-sky-ring: rgb(14 165 233 / 0.3);
+  --tone-slate-bg: rgb(100 116 139 / 0.15); --tone-slate-fg: #cbd5e1;   --tone-slate-ring: rgb(100 116 139 / 0.3);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --amd-fg: #c8141b;                 /* darker red keeps links readable on white (AA) */
+
+  --ink: #f4f5f7;
+  --panel: #ffffff;
+  --line: #e3e6eb;
+  --field: #f4f5f7;
+  --sunken: #f4f5f7;
+  --hover: rgb(15 23 42 / 0.04);
+  --track: #e5e7eb;
+  --spinner: #cbd5e1;
+
+  --strong: #0b0d12;
+  --fg: #1f2633;
+  --soft: #334155;
+  --muted: #556072;
+  --subtle: #687385;
+
+  --risk-high-fg: #dc2626;
+  --risk-mid-fg: #b45309;
+  --risk-low-fg: #047857;
+  --positive: #047857;
+  --negative: #dc2626;
+  --warning: #b45309;
+
+  --good-bg: #ecfdf5;
+  --good-fg: #065f46;
+  --good-fg-soft: #047857;
+  --error-bg: #fef2f2;
+  --error-line: #fecaca;
+  --error-fg: #b91c1c;
+  --notice-bg: #fffbeb;
+  --notice-line: #fde68a;
+  --notice-fg: #92400e;
+  --user-bubble: rgb(237 28 36 / 0.1);
+
+  --tone-red-bg: rgb(239 68 68 / 0.1);      --tone-red-fg: #b91c1c;     --tone-red-ring: rgb(239 68 68 / 0.25);
+  --tone-amber-bg: rgb(245 158 11 / 0.12);  --tone-amber-fg: #b45309;   --tone-amber-ring: rgb(245 158 11 / 0.3);
+  --tone-green-bg: rgb(16 185 129 / 0.1);   --tone-green-fg: #047857;   --tone-green-ring: rgb(16 185 129 / 0.25);
+  --tone-violet-bg: rgb(139 92 246 / 0.1);  --tone-violet-fg: #6d28d9;  --tone-violet-ring: rgb(139 92 246 / 0.25);
+  --tone-sky-bg: rgb(14 165 233 / 0.1);     --tone-sky-fg: #0369a1;     --tone-sky-ring: rgb(14 165 233 / 0.25);
+  --tone-slate-bg: rgb(100 116 139 / 0.1);  --tone-slate-fg: #475569;   --tone-slate-ring: rgb(100 116 139 / 0.25);
+}
+
+@theme inline {
+  --color-amd: var(--amd);
+  --color-amd-dark: var(--amd-dark);
+  --color-amd-fg: var(--amd-fg);
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-field: var(--field);
+  --color-sunken: var(--sunken);
+  --color-hover: var(--hover);
+  --color-track: var(--track);
+  --color-spinner: var(--spinner);
+  --color-strong: var(--strong);
+  --color-fg: var(--fg);
+  --color-soft: var(--soft);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-risk-high: var(--risk-high);
+  --color-risk-mid: var(--risk-mid);
+  --color-risk-low: var(--risk-low);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-good-bg: var(--good-bg);
+  --color-good-fg: var(--good-fg);
+  --color-good-fg-soft: var(--good-fg-soft);
+  --color-error-bg: var(--error-bg);
+  --color-error-line: var(--error-line);
+  --color-error-fg: var(--error-fg);
+  --color-notice-bg: var(--notice-bg);
+  --color-notice-line: var(--notice-line);
+  --color-notice-fg: var(--notice-fg);
+  --color-user-bubble: var(--user-bubble);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ==================================================================== base */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--ink);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Theme switch: colours cross-fade for 150ms. The class is only added on a user toggle. */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, fill 150ms ease !important;
+}
+
+/* ==================================================================== markdown (copilot answers) */
+.prose-chat > :first-child { margin-top: 0; }
+.prose-chat > :last-child { margin-bottom: 0; }
+.prose-chat p { margin: 0.5rem 0; }
+.prose-chat ul { margin: 0.5rem 0; padding-left: 1.25rem; list-style: disc; }
+.prose-chat ol { margin: 0.5rem 0; padding-left: 1.25rem; list-style: decimal; }
+.prose-chat strong { color: var(--strong); }
+.prose-chat code { border-radius: 0.25rem; background: var(--sunken); padding: 0 0.25rem; font-size: 0.75rem; }
+.prose-chat table { display: block; max-width: 100%; overflow-x: auto; margin: 0.5rem 0; font-size: 0.875rem; }
+.prose-chat th, .prose-chat td { border: 1px solid var(--line); padding: 0.25rem 0.5rem; }
