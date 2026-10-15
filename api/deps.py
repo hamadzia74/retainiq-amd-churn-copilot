@@ -31,6 +31,11 @@ class AppState:
             self._sessions.move_to_end(session_id)
             return self._sessions[session_id]
 
+    def existing_agent(self, session_id: str) -> Agent | None:
+        """The session's agent if it exists - never creates one."""
+        with self._sessions_lock:
+            return self._sessions.get(session_id)
+
     def reset(self, session_id: str) -> None:
         with self._sessions_lock:
             self._sessions.pop(session_id, None)

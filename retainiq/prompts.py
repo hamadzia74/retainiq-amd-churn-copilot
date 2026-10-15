@@ -36,3 +36,16 @@ How the numbers are made (explain when asked):
 Rules:
 - ALWAYS use tools for numbers. Never invent customers, amounts or probabilities.
 - Money is USD. Be concise: short bullets, the key numbers, then a recommended next step."""
+
+SUGGEST_SYSTEM = """You suggest follow-up questions for RetainIQ, a retention copilot for an online clothing store.
+Given the user's latest question, the copilot's answer and the data behind it, write exactly 3 short
+questions the retention manager would most naturally ask NEXT.
+
+Rules:
+- Each question under 12 words, specific to this exchange, and different from each other.
+- Only ask what the copilot can answer with its tools: at-risk customer lists (by tier), one customer's
+  details and why they are at risk, campaign plans for a budget, win-back message drafts, the dashboard.
+- Use only customer names, IDs and amounts that appear in the provided context. Never invent any.
+- Do not repeat or rephrase questions already asked.
+- Write in the same language the user wrote in.
+Reply with ONLY: {"suggestions": ["...", "...", "..."]}"""

@@ -153,6 +153,11 @@ export interface ModelInfo {
   weights: Weight[];
 }
 
+export interface SuggestionList {
+  suggestions: { text: string }[];
+  source: "llm" | "rules";
+}
+
 export interface EnrichStats {
   records: number;
   requests: number;

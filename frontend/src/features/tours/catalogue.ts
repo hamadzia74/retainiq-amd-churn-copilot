@@ -184,6 +184,11 @@ export const TOURS: Tour[] = [
       },
       {
         target: "message-list",
+        title: "Suggested follow-ups",
+        body: "After each answer, a few follow-up questions appear underneath, written for that conversation. Tap one to ask it straight away.",
+      },
+      {
+        target: "message-list",
         title: "Long conversations",
         body: "The conversation scrolls on its own as answers arrive. If you scroll up to read, a Jump to latest button brings you back.",
       },

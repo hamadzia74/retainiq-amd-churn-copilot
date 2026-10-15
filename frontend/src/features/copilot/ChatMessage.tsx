@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Spinner } from "../../components/ui";
+import { SuggestionChips } from "./SuggestionChips";
 import type { ChatMessage as Message } from "../../hooks/useChat";
 
 // The markdown renderer is the Copilot's heaviest dependency: load it only when an answer arrives.
@@ -18,7 +19,10 @@ function ToolCalls({ tools }: { tools: Message["tools"] }) {
   );
 }
 
-export function ChatMessage({ message: m }: { message: Message }) {
+/** One chat bubble. `suggest` is passed only for the latest answer, which shows the follow-up chips. */
+export function ChatMessage({ message: m, suggest }: {
+  message: Message; suggest?: { onPick: (text: string) => void; disabled: boolean };
+}) {
   if (m.role === "user") {
     return (
       <div className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-xl rounded-br-sm bg-user-bubble px-3.5 py-2 text-sm text-strong">
@@ -41,6 +45,9 @@ export function ChatMessage({ message: m }: { message: Message }) {
             <Markdown>{m.text}</Markdown>
           </Suspense>
         </div>
+      )}
+      {suggest && (
+        <SuggestionChips items={m.suggestions} loading={m.suggestionsLoading} disabled={suggest.disabled} onPick={suggest.onPick} />
       )}
     </div>
   );

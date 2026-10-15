@@ -27,7 +27,8 @@ export default function Copilot() {
           {messages.length > 0 && <Button variant="ghost" onClick={reset} disabled={busy} className="py-1.5 max-md:min-h-9">New chat</Button>}
         </header>
 
-        <MessageList messages={messages} empty={<StarterPrompts onPick={submit} disabled={!online} />} />
+        <MessageList messages={messages} empty={<StarterPrompts onPick={submit} disabled={!online} />}
+          onSuggest={submit} suggestDisabled={!online || busy} />
 
         <Composer onSend={submit} disabled={!online} busy={busy}
           placeholder={online ? "Ask about customers, risk or campaigns…" : "LLM offline: the Copilot is paused"} />

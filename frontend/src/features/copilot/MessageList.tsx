@@ -10,7 +10,9 @@ import { ChatMessage } from "./ChatMessage";
  * The only scrolling part of the Copilot. Follows new messages while the reader is at the
  * bottom; if they scroll up, it stops and offers "Jump to latest".
  */
-export function MessageList({ messages, empty }: { messages: Message[]; empty: ReactNode }) {
+export function MessageList({ messages, empty, onSuggest, suggestDisabled }: {
+  messages: Message[]; empty: ReactNode; onSuggest: (text: string) => void; suggestDisabled: boolean;
+}) {
   const { ref, atBottom, onScroll, scrollToBottom } = useAutoScroll<HTMLDivElement>(messages);
 
   return (
@@ -19,8 +21,9 @@ export function MessageList({ messages, empty }: { messages: Message[]; empty: R
         {messages.length === 0 ? empty : (
           <div className="space-y-4">
             {messages.map((m, i) => (
-              <motion.div key={i} variants={fadeUp} initial="hidden" animate="show">
-                <ChatMessage message={m} />
+              <motion.div key={m.id} variants={fadeUp} initial="hidden" animate="show">
+                <ChatMessage message={m}
+                  suggest={i === messages.length - 1 ? { onPick: onSuggest, disabled: suggestDisabled } : undefined} />
               </motion.div>
             ))}
           </div>

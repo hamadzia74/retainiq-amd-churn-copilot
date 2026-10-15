@@ -60,6 +60,12 @@ for r in (system, dashboard, customers, campaigns, model, enrich, agent):
 NO_CACHE = {"Cache-Control": "no-cache"}
 IMMUTABLE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
+@app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], include_in_schema=False)
+def unknown_api(path: str):
+    """Unknown API paths get a clear 404 (any method), never the SPA route's 405."""
+    raise HTTPException(404, f"Unknown API endpoint: /api/{path}")
+
+
 if DIST.exists():
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):

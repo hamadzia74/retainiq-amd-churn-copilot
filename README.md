@@ -162,6 +162,14 @@ profile, run it on the MI300X droplet next to `scripts/serve_amd.sh`.
 | `GET /api/model` | Model weights and accuracy |
 | `POST /api/enrich` · `GET /api/enrich/status` | LLM enrichment on AMD as a background job (409 if already running) |
 | `POST /api/agent/chat` `{session_id, message}` | Copilot, streamed as Server-Sent Events: `tool` → `answer` → `done` |
+| `POST /api/agent/suggestions` `{session_id}` | 3 follow-up questions for the latest exchange, `source: llm` or `rules` |
+
+**Copilot follow-ups.** After each answer the Copilot shows three suggested next questions;
+tapping one sends it straight away. The LLM writes them from the question, the answer and the
+data behind it, so they name real customers and figures. This is one short call per answer
+(about $0.0002) with an 8-second limit. Before they're shown, duplicates, already-asked questions,
+overlong items and invented customer IDs are filtered out. If the LLM is offline, slow or rate
+limited, suggestions are built from the tool results instead.
 
 When the LLM is unavailable, `/api/enrich` and `/api/agent/chat` return 503 with the reason
 (unreachable, bad key, model retired), and every other endpoint keeps working on the keyword

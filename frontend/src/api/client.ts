@@ -1,5 +1,5 @@
 import type {
-  AtRiskRow, Customer360, Dashboard, EnrichStatus, Health, ModelInfo, Plan, Tier, WinBackMessage,
+  AtRiskRow, Customer360, Dashboard, EnrichStatus, Health, ModelInfo, Plan, SuggestionList, Tier, WinBackMessage,
 } from "./types";
 
 export class ApiError extends Error {
@@ -52,5 +52,8 @@ export const api = {
   model: (signal?: Signal) => request<ModelInfo>("/model", { signal }),
   startEnrich: (force = false) => request<EnrichStatus>(`/enrich?force=${force}`, { method: "POST" }),
   enrichStatus: (signal?: Signal) => request<EnrichStatus>("/enrich/status", { signal }),
+  /** Follow-up questions for the session's latest exchange (one call per finished answer). */
+  suggestions: (sessionId: string, signal?: Signal) =>
+    request<SuggestionList>("/agent/suggestions", { method: "POST", body: JSON.stringify({ session_id: sessionId }), signal }),
   resetChat: (sessionId: string) => request<void>(`/agent/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
 };

@@ -70,6 +70,13 @@ def test_frontend_cache_headers(client):
     assert "immutable" in client.get(f"/assets/{asset}").headers["cache-control"]
 
 
+def test_unknown_api_paths_are_404_for_every_method(client):
+    for method in ("GET", "POST", "DELETE"):
+        r = client.request(method, "/api/agent/no-such-endpoint")
+        assert r.status_code == 404 and "Unknown API endpoint" in r.json()["detail"]
+    assert client.post("/api/agent/suggestions", json={"session_id": "x"}).status_code == 200   # real routes still win
+
+
 def test_at_risk_pages_line_up_with_one_big_request(client):
     one = client.get("/api/customers/at-risk?limit=50&sort=value").json()
     p1 = client.get("/api/customers/at-risk?limit=25&sort=value").json()

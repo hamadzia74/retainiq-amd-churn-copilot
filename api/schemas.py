@@ -197,6 +197,19 @@ class EnrichStatus(BaseModel):
     plan: EnrichPlan
 
 
+class SuggestionsRequest(BaseModel):
+    session_id: str = Field(min_length=1, max_length=64)
+
+
+class Suggestion(BaseModel):
+    text: str
+
+
+class Suggestions(BaseModel):
+    suggestions: list[Suggestion]
+    source: Literal["llm", "rules"]
+
+
 class ChatRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=64)
     message: str = Field(min_length=1, max_length=2000)

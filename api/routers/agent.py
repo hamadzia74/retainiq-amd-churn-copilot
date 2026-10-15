@@ -16,9 +16,10 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from retainiq.llm import LLMError
+from retainiq.suggestions import suggest
 
 from ..deps import AppState, get_state, require_llm
-from ..schemas import ChatRequest
+from ..schemas import ChatRequest, Suggestions, SuggestionsRequest
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 StateDep = Annotated[AppState, Depends(get_state)]
@@ -61,6 +62,19 @@ def chat(req: ChatRequest, state: StateDep):
 
     return StreamingResponse(stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@router.post("/suggestions", response_model=Suggestions)
+def suggestions(req: SuggestionsRequest, state: StateDep):
+    """Up to 3 follow-up questions for the session's latest exchange.
+
+    Written by the LLM from the question, the answer and the data behind it (one short call,
+    at most ~8 s); falls back to rules built from the tool results when the LLM is unavailable.
+    A new or unknown session gets the starter questions.
+    """
+    agent = state.existing_agent(req.session_id)
+    items, source = suggest(state.engine.llm, agent.last_turn if agent else None, agent.asked if agent else [])
+    return {"suggestions": [{"text": t} for t in items], "source": source}
 
 
 @router.delete("/sessions/{session_id}", status_code=204)
