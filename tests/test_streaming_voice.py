@@ -13,7 +13,7 @@ from api.main import app
 from .conftest import sign_in
 from retainiq import config, steps, voice
 from retainiq.agent import Agent
-from retainiq.llm import LLM, LLMError
+from retainiq.llm import LLM, USAGE_HOOK, LLMError
 
 
 # ------------------------------------------------------------------ helpers
@@ -153,6 +153,42 @@ def test_provider_without_streaming_falls_back_to_one_complete_answer():
     out = []
     result = llm_with(create).chat_stream([{"role": "user", "content": "hi"}], out.append)
     assert result.content == "All at once." and out == ["All at once."]
+
+
+def test_streams_report_their_token_counts():
+    seen = {}
+
+    def create(model, messages, stream=False, **kw):
+        seen.update(kw)
+        def gen():
+            yield chunk("Hello")
+            yield NS(choices=[], usage=NS(prompt_tokens=120, completion_tokens=9))    # the final usage chunk
+        return gen()
+    billed = []
+    token = USAGE_HOOK.set(billed.append)
+    try:
+        result = llm_with(create).chat_stream([{"role": "user", "content": "hi"}], lambda t: None)
+    finally:
+        USAGE_HOOK.reset(token)
+    assert seen["stream_options"] == {"include_usage": True}
+    assert (result.usage.prompt_tokens, result.usage.completion_tokens) == (120, 9)
+    assert billed == [result]                                   # the usage hook sees the counts
+
+
+def test_provider_that_rejects_stream_options_still_streams():
+    calls = []
+
+    def create(model, messages, stream=False, **kw):
+        calls.append("stream_options" in kw)
+        if "stream_options" in kw:
+            raise status_error(400, "Unrecognized request argument supplied: stream_options")
+        return iter([chunk("Still "), chunk("streaming.")])
+    llm = llm_with(create)
+    out = []
+    result = llm.chat_stream([{"role": "user", "content": "hi"}], out.append)
+    assert result.content == "Still streaming." and out == ["Still ", "streaming."] and result.usage is None
+    llm.chat_stream([{"role": "user", "content": "again"}], lambda t: None)
+    assert calls == [True, False, False]                       # asked once, then never again
 
 
 # ------------------------------------------------------------------ voice

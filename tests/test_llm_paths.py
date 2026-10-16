@@ -30,9 +30,10 @@ def fake_stream(messages):
     if messages[-1]["role"] == "user":
         yield _chunk(tool_calls=[NS(index=0, id="c1", function=NS(name="plan_campaign", arguments='{"bud'))])
         yield _chunk(tool_calls=[NS(index=0, id=None, function=NS(name=None, arguments='get": 300}'))])
-        return
-    for piece in ["Plan ", "ready: ", "51 customers."]:
-        yield _chunk(piece)
+    else:
+        for piece in ["Plan ", "ready: ", "51 customers."]:
+            yield _chunk(piece)
+    yield NS(choices=[], usage=USAGE)                               # token counts come last (include_usage)
 
 
 def fake_create(model, messages, **kw):

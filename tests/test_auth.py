@@ -218,6 +218,7 @@ def test_ai_calls_are_counted_and_capped(admin, monkeypatch):
     after = admin.get("/api/auth/me").json()["usage"]
     assert after["calls"] == before["calls"] + 2                      # two LLM rounds: tool call, then the answer
     assert after["by_feature"]["chat"] >= 2 and after["tokens_in"] >= before["tokens_in"]
+    assert after["tokens_in"] - before["tokens_in"] == 2 * 100         # both streamed rounds report tokens
 
     monkeypatch.setitem(settings.DAILY_AI_CALLS, "admin", after["calls"])      # no calls left today
     status, _ = ask(admin, "metered-2", "plan $300")

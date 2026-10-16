@@ -43,9 +43,11 @@ USAGE_HOOK: ContextVar[Callable[[object], None] | None] = ContextVar("llm_usage_
 
 @dataclass
 class StreamResult:
-    """A streamed completion, reassembled: the full text plus any tool calls (OpenAI dict shape)."""
+    """A streamed completion, reassembled: the full text plus any tool calls (OpenAI dict shape),
+    and the token counts from the stream's last chunk when the provider sends them."""
     content: str
     tool_calls: list[dict]
+    usage: object | None = None          # .prompt_tokens / .completion_tokens, like a normal response
 
 
 class LLMError(Exception):
@@ -117,6 +119,9 @@ class LLM:
         self._available: bool | None = None
         self._checked_at = 0.0
         self._usage: tuple[float, dict | None] = (0.0, None)
+        # Ask streams for their token counts (stream_options.include_usage). Switched off for good
+        # if the provider rejects the option, so streaming itself never suffers for it.
+        self._stream_usage = True
 
     # ---------------------------------------------------------------- status
     @property
@@ -215,10 +220,14 @@ class LLM:
 
         def run() -> StreamResult:
             nonlocal shown
-            stream = self.client.chat.completions.create(model=self.model, messages=messages, stream=True, **kwargs)
+            extra = {"stream_options": {"include_usage": True}} if self._stream_usage else {}
+            stream = self.client.chat.completions.create(model=self.model, messages=messages, stream=True,
+                                                         **extra, **kwargs)
             parts: list[str] = []
             calls: dict[int, dict] = {}
+            usage = None
             for chunk in stream:
+                usage = getattr(chunk, "usage", None) or usage      # the last chunk carries the totals
                 if not getattr(chunk, "choices", None):
                     continue
                 delta = chunk.choices[0].delta
@@ -236,13 +245,18 @@ class LLM:
             return StreamResult("".join(parts), [
                 {"id": c["id"] or f"call_{i}", "type": "function",
                  "function": {"name": c["name"], "arguments": c["arguments"] or "{}"}}
-                for i, c in sorted(calls.items())])
+                for i, c in sorted(calls.items())], usage)
 
         try:
             return self._call(run, on_wait, can_retry=lambda: not shown)
         except LLMError as exc:
             if shown or "stream" not in str(exc).lower():
                 raise
+            if self._stream_usage and "stream_options" in str(exc).lower():
+                # Only the usage option was refused: keep streaming, just without token counts.
+                log.warning("provider rejected stream_options; streaming without token counts")
+                self._stream_usage = False
+                return self.chat_stream(messages, on_delta, on_wait, **kwargs)
         # The provider rejected streaming: one complete answer, delivered as a single piece.
         msg = self.chat(messages, on_wait, **kwargs).choices[0].message
         if msg.content:
