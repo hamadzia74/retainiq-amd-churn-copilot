@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 from openai import APIConnectionError, APIStatusError
 
 from api.main import app
+
+from .conftest import sign_in
 from retainiq import config, steps, voice
 from retainiq.agent import Agent
 from retainiq.llm import LLM, LLMError
@@ -175,9 +177,71 @@ def test_transcribe_sends_audio_to_the_audio_model(monkeypatch):
     llm = llm_with(create)
     llm.model_ids = [config.LLM_MODEL, "MiMo-V2.6-Flash"]
     monkeypatch.setattr(config, "LLM_TRANSCRIBE_MODEL", "MiMo-V2.6-Flash")
+    monkeypatch.setattr(voice, "_accepted_shape", None)
     assert voice.transcribe(llm, wav(2.0)) == "Which VIPs are at risk?"
     assert seen["model"] == "MiMo-V2.6-Flash" and seen["extra"] == {"reasoning_effort": "none"}
-    assert seen["parts"][0]["type"] == "input_audio" and seen["parts"][0]["input_audio"]["format"] == "wav"
+    text, audio = seen["parts"]
+    assert text["type"] == "text" and audio["type"] == "input_audio"
+    assert audio["input_audio"]["data"].startswith("data:audio/wav;base64,UklGR")     # a data URI, not raw base64
+    assert audio["input_audio"]["format"] == "wav"
+
+
+def test_transcribe_falls_back_to_an_audio_shape_the_provider_accepts(monkeypatch):
+    tried = []
+
+    def create(model, messages, **kw):
+        part = messages[0]["content"][1]
+        tried.append(part["type"])
+        if part["type"] != "file":
+            raise LLMError("LLM request failed (400): json_parse_error: data did not match any variant of "
+                           "untagged enum MessageContent", status=400)
+        assert part["file"]["file_data"].startswith("data:audio/wav;base64,")
+        return NS(choices=[NS(message=NS(content="Show churn by plan", tool_calls=None))])
+    llm = llm_with(create)
+    monkeypatch.setattr(config, "LLM_TRANSCRIBE_MODEL", "MiMo-V2.6-Flash")
+    monkeypatch.setattr(voice, "_accepted_shape", None)
+    assert voice.transcribe(llm, wav(2.0)) == "Show churn by plan"
+    assert tried == ["input_audio", "file"]
+    tried.clear()
+    assert voice.transcribe(llm, wav(2.0)) == "Show churn by plan"
+    assert tried == ["file"]                                          # remembered: one call from now on
+
+
+def test_gateway_validation_errors_count_as_shape_rejections():
+    zod = ("LLM request failed (400): {'success': False, 'error': {'issues': [{'code': 'invalid_union', "
+           "'message': 'Invalid input'}], 'name': 'ZodError'}}")
+    assert voice._schema_rejected(LLMError(zod, status=400))
+    assert not voice._schema_rejected(LLMError("LLM request failed (400): context length exceeded", status=400))
+
+
+def test_transcribe_gives_up_cleanly_when_no_shape_is_accepted(monkeypatch):
+    calls = []
+
+    def create(model, messages, **kw):
+        calls.append(1)
+        raise LLMError("LLM request failed (400): json_parse_error", status=400)
+    monkeypatch.setattr(config, "LLM_TRANSCRIBE_MODEL", "MiMo-V2.6-Flash")
+    monkeypatch.setattr(voice, "_accepted_shape", None)
+    monkeypatch.setattr(voice, "_audio_rejected", False)
+    llm = llm_with(create)
+    assert voice.voice_available(llm)
+    with pytest.raises(LLMError) as exc:
+        voice.transcribe(llm, wav(2.0))
+    assert "doesn't accept audio" in str(exc.value) and exc.value.fatal and len(calls) == len(voice.AUDIO_SHAPES)
+    assert not voice.voice_available(llm)                             # mic switched off: no more wasted calls
+
+
+def test_transcribe_does_not_retry_other_errors(monkeypatch):
+    calls = []
+
+    def create(model, messages, **kw):
+        calls.append(1)
+        raise LLMError("LLM request failed (500): boom", status=500)
+    monkeypatch.setattr(config, "LLM_TRANSCRIBE_MODEL", "MiMo-V2.6-Flash")
+    monkeypatch.setattr(voice, "_accepted_shape", None)
+    with pytest.raises(LLMError, match="boom"):
+        voice.transcribe(llm_with(create), wav(2.0))
+    assert len(calls) == 1
 
 
 def test_transcribe_rejects_silence_and_unavailable_models(monkeypatch):
@@ -197,6 +261,7 @@ def test_transcribe_rejects_silence_and_unavailable_models(monkeypatch):
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:
+        sign_in(c)
         yield c
 
 

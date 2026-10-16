@@ -7,6 +7,7 @@ nothing too long, no customer IDs that never appeared. If the LLM is offline, sl
 limited or returns junk, suggestions are built from the tool results by simple rules instead.
 """
 
+import contextvars
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -141,7 +142,7 @@ def suggest(llm: LLM, turn: Turn | None, asked: list[str], timeout: float = TIME
     """Return (suggestions, source) where source is "llm" or "rules"."""
     if turn is None or turn.answer is None or not llm.available:
         return rule_suggestions(turn, asked), "rules"
-    future = _pool.submit(llm.json, SUGGEST_SYSTEM, build_request(turn, asked), 200)
+    future = _pool.submit(contextvars.copy_context().run, llm.json, SUGGEST_SYSTEM, build_request(turn, asked), 200)
     try:
         data, _, _ = future.result(timeout=timeout)
     except FutureTimeout:                              # slow provider: don't keep the user waiting

@@ -1,0 +1,23 @@
+# RetainIQ's database for local development:   docker compose up -d db
+# Matches the default DATABASE_URL (postgresql+psycopg://retainiq:retainiq@localhost:5433/retainiq).
+# Port 5433 on the host, so it doesn't clash with a PostgreSQL already installed on 5432.
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: retainiq
+      POSTGRES_PASSWORD: retainiq
+      POSTGRES_DB: retainiq
+    ports:
+      - "5433:5432"
+    volumes:
+      - retainiq-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retainiq -d retainiq"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  retainiq-db:

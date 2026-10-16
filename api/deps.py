@@ -1,7 +1,9 @@
-"""Shared server state: the one Engine, the enrichment job, the chat sessions."""
+"""Shared server state: the one Engine, the enrichment job, and a cache of recent chat agents.
+(Chats themselves are saved in the database - see chats.py.)"""
 
 import threading
 from collections import OrderedDict
+from typing import Callable
 
 from fastapi import HTTPException, Request
 
@@ -21,11 +23,12 @@ class AppState:
         self._sessions: OrderedDict[str, Agent] = OrderedDict()
         self._sessions_lock = threading.Lock()
 
-    def agent(self, session_id: str) -> Agent:
-        """The chat agent for a session (kept in memory, least-recently-used dropped first)."""
+    def agent(self, session_id: str, restore: Callable[[], Agent] | None = None) -> Agent:
+        """The chat agent for a session (kept in memory, least-recently-used dropped first).
+        On a miss, `restore` rebuilds it from the database; without it, a fresh agent."""
         with self._sessions_lock:
             if session_id not in self._sessions:
-                self._sessions[session_id] = Agent(self.engine)
+                self._sessions[session_id] = restore() if restore else Agent(self.engine)
                 if len(self._sessions) > MAX_SESSIONS:
                     self._sessions.popitem(last=False)
             self._sessions.move_to_end(session_id)

@@ -8,10 +8,13 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 
+from .conftest import sign_in
+
 
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:                     # runs the lifespan (builds the Engine)
+        sign_in(c)
         engine = app.state.retainiq.engine
         engine.llm._available = False              # behave as if vLLM were down
         engine.llm._checked_at = float("inf")      # ...and don't re-check during the tests

@@ -8,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+
+from .conftest import sign_in
 from retainiq.agent import Agent, ToolUse, Turn
 from retainiq.llm import LLMError
 from retainiq.suggestions import STARTERS, build_request, clean, known_ids, rule_suggestions, suggest
@@ -133,6 +135,7 @@ def test_agent_records_question_answer_and_tool_results(client):
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:
+        sign_in(c)
         yield c
 
 

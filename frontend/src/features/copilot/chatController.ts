@@ -1,8 +1,8 @@
 // Copilot chat state as a small framework-free controller (unit-tested in chatController.test.ts;
-// React reads it through useChat). Owns: streamed answer text, plain-English progress steps, and
-// the rule "one suggestions request per finished answer".
+// React reads it through useChat). Owns: streamed answer text, plain-English progress steps, the
+// rule "one suggestions request per finished answer", and switching between saved conversations.
 import type { ChatHandlers } from "../../api/sse";
-import type { AgentStep, SuggestionList } from "../../api/types";
+import type { AgentStep, SavedMessage, SuggestionList } from "../../api/types";
 
 export interface ChatMessage {
   id: number;
@@ -20,13 +20,16 @@ export interface ChatMessage {
 export interface ChatState {
   messages: ChatMessage[];
   busy: boolean;
+  /** The conversation being shown (a new one gets its id before the first question). */
+  sessionId: string;
 }
 
 export interface ChatDeps {
   stream: (sessionId: string, message: string, handlers: ChatHandlers) => Promise<void>;
   suggest: (sessionId: string, signal: AbortSignal) => Promise<SuggestionList>;
-  resetSession: (sessionId: string) => Promise<void>;
   newSessionId: () => string;
+  /** The server saved something (an answer, follow-ups): refresh the history list and usage. */
+  onSaved?: () => void;
   now?: () => number;
 }
 
@@ -37,11 +40,24 @@ export function upsertStep(steps: AgentStep[], step: AgentStep): AgentStep[] {
   return i < 0 ? [...steps, step] : steps.map((s, j) => (j === i ? { ...s, ...step } : s));
 }
 
+/** A saved conversation, as the chat shows it. Follow-ups are only shown under the latest answer. */
+export function fromSaved(saved: SavedMessage[], firstId = 1): ChatMessage[] {
+  return saved.map((m, i) => ({
+    id: firstId + i,
+    role: m.role,
+    text: m.text,
+    steps: m.steps,
+    error: m.error || undefined,
+    durationMs: m.duration_ms ?? undefined,
+    suggestions: m.suggestions ?? undefined,
+  }));
+}
+
 export function createChat(deps: ChatDeps) {
   const now = deps.now ?? (() => performance.now());
-  let state: ChatState = { messages: [], busy: false };
-  const listeners = new Set<() => void>();
   let session = deps.newSessionId();
+  let state: ChatState = { messages: [], busy: false, sessionId: session };
+  const listeners = new Set<() => void>();
   let nextId = 1;
   let suggesting: AbortController | null = null;
 
@@ -68,6 +84,7 @@ export function createChat(deps: ChatDeps) {
     try {
       const r = await deps.suggest(sessionId, ctl.signal);
       if (!ctl.signal.aborted) patch(replyId, (m) => ({ ...m, suggestionsLoading: false, suggestions: r.suggestions.map((s) => s.text) }));
+      deps.onSaved?.();
     } catch {
       if (!ctl.signal.aborted) patch(replyId, (m) => ({ ...m, suggestionsLoading: false }));   // no chips; nothing else breaks
     } finally {
@@ -104,18 +121,30 @@ export function createChat(deps: ChatDeps) {
       steps: m.steps.map((s) => (s.status === "running" ? { ...s, status: m.error ? "failed" : "done" } : s)),
     }));
     set({ busy: false });
+    deps.onSaved?.();
 
     // Exactly one suggestions request per finished answer - never after an error or an empty reply.
     const done = state.messages.find((m) => m.id === reply.id);
     if (done && !done.error && done.text.trim()) await fetchSuggestions(reply.id, sessionId);
   }
 
+  /** Start a new conversation. The current one stays saved in the history. */
   function reset() {
     suggesting?.abort();
     suggesting = null;
-    deps.resetSession(session).catch(() => {});
     session = deps.newSessionId();
-    set({ messages: [], busy: false });
+    set({ messages: [], busy: false, sessionId: session });
+  }
+
+  /** Show a saved conversation and continue it. Not while an answer is still arriving. */
+  function open(sessionId: string, saved: SavedMessage[]) {
+    if (state.busy) return;
+    suggesting?.abort();
+    suggesting = null;
+    session = sessionId;
+    const messages = fromSaved(saved, nextId);
+    nextId += messages.length;
+    set({ messages, busy: false, sessionId });
   }
 
   return {
@@ -126,6 +155,7 @@ export function createChat(deps: ChatDeps) {
     },
     send,
     reset,
+    open,
     /** Stop background work when the Copilot page unmounts. */
     dispose: () => suggesting?.abort(),
   };

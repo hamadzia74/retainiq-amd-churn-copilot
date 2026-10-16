@@ -17,6 +17,8 @@ export interface TourStep {
   callout?: string;
   /** Example text for the target's input, offered via a "Paste example" button. Never submitted. */
   sample?: string;
+  /** Show this step only when the feature is switched on (e.g. the mic exists only when voice is available). */
+  requires?: "voice";
 }
 
 export interface Tour {

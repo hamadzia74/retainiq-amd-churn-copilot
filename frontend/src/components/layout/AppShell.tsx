@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { PasswordDialog, UserMenu } from "../../features/auth";
 import { TourLauncher, TourPanel, TourRunner } from "../../features/tours";
 import { useHealth } from "../../hooks/queries";
 import { pageVariants } from "../../motion/variants";
@@ -25,9 +26,10 @@ export function AppShell() {
       <MobileNav />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Desktop header: Guided Tours. (On phones the button lives in MobileNav's top bar.) */}
-        <header className="hidden h-12 shrink-0 items-center justify-end border-b border-line bg-panel px-8 md:flex">
+        {/* Desktop header: Guided Tours and the account menu. (On phones both live in MobileNav.) */}
+        <header className="hidden h-12 shrink-0 items-center justify-end gap-2 border-b border-line bg-panel px-8 md:flex">
           <TourLauncher />
+          <UserMenu />
         </header>
 
         <main id="main" className={`flex min-h-0 min-w-0 flex-1 flex-col ${fullHeight ? "overflow-hidden" : "overflow-y-auto"}`}>
@@ -46,6 +48,7 @@ export function AppShell() {
 
       <TourPanel />
       <TourRunner />
+      <PasswordDialog />
     </div>
   );
 }

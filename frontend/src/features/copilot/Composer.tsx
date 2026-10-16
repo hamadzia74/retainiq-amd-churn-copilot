@@ -78,7 +78,8 @@ export function Composer({ onSend, disabled, busy, placeholder, voice }: {
             placeholder={transcribing ? "Transcribing your question on AMD…" : placeholder}
             className="max-h-[116px] min-h-9 flex-1 resize-none bg-transparent py-2 text-sm leading-5 text-strong placeholder:text-subtle focus:outline-none disabled:cursor-not-allowed" />
         )}
-        <MicButton state={recorder.state} onStart={recorder.start} onStop={recorder.stop} unavailable={voiceUnavailable} />
+        {/* No mic at all when the server has no voice model; a greyed one when only the browser is the problem. */}
+        {voice.available && <MicButton state={recorder.state} onStart={recorder.start} onStop={recorder.stop} unavailable={voiceUnavailable} />}
         <Button type="submit" disabled={disabled || busy || recording || transcribing || !text.trim()} className="h-9 px-3 max-md:min-h-9">
           <SendHorizontal size={15} strokeWidth={2} />
           <span className="max-sm:sr-only">Send</span>

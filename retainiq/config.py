@@ -39,7 +39,9 @@ PROFILES = {
         "concurrency": 7,
         "rpm": 18,
         "batch_size": 50,
-        "transcribe_model": "MiMo-V2.6-Flash",   # the free model that accepts audio
+        # Voice is off by default: MiMo-V2.6-Flash is listed as audio-capable, but (Oct 2026) Token Factory's
+        # backend rejects audio input. Set LLM_TRANSCRIBE_MODEL=MiMo-V2.6-Flash in .env to try it again.
+        "transcribe_model": "",
     },
     # Our own GPU: no rate limits, so many small concurrent requests (vLLM batches them).
     "vllm": {

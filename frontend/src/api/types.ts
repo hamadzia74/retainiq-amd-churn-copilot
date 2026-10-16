@@ -206,3 +206,77 @@ export interface EnrichStatus {
   error: string | null;
   plan: EnrichPlan;
 }
+
+// ---------------------------------------------------------------------------- accounts
+export type Role = "admin" | "analyst" | "demo";
+
+export interface UsageToday {
+  day: string;
+  calls: number;
+  limit: number;
+  remaining: number;
+  tokens_in: number;
+  tokens_out: number;
+  by_feature: Record<string, number>;
+}
+
+export interface Me {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+  usage: UsageToday;
+}
+
+export interface AuthConfig {
+  signup: boolean;
+  demo: boolean;
+}
+
+export interface UserRow {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string | null;
+  last_login_at: string | null;
+  usage: UsageToday;
+}
+
+export interface NewUser {
+  email: string;
+  name: string;
+  password: string;
+  role: Role;
+}
+
+export type UserUpdate = Partial<{ name: string; role: Role; is_active: boolean; password: string }>;
+
+// ---------------------------------------------------------------------------- saved chats
+export interface ChatSummary {
+  id: string;
+  title: string;
+  questions: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SavedMessage {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+  steps: AgentStep[];
+  suggestions: string[] | null;
+  duration_ms: number | null;
+  error: boolean;
+  created_at: string | null;
+}
+
+export interface ChatDetail {
+  id: string;
+  title: string;
+  created_at: string | null;
+  updated_at: string | null;
+  messages: SavedMessage[];
+}

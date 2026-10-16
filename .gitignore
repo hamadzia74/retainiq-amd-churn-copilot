@@ -4,6 +4,8 @@ __pycache__/
 .env
 data/*.csv
 data/signals.json
+data/retainiq.db*
+data/.jwt_secret
 frontend/node_modules/
 frontend/dist/
 .pytest_cache/

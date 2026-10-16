@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Spinner } from "../../components/ui";
 import { EASE_OUT } from "../../motion/variants";
-import { findTour } from "./catalogue";
+import { useHealth } from "../../hooks/queries";
+import { findTour, setTourFeatures } from "./catalogue";
 import { speechSupported, useNarration } from "./narration";
 import { placeCard, type Rect, type Size } from "./placement";
 import { tourStore, useTourState } from "./tourStore";
@@ -51,6 +52,8 @@ export function TourRunner() {
   const reduced = useReducedMotion();
   const glide = reduced ? { duration: 0 } : GLIDE;     // reduced motion: the spotlight jumps instead of gliding
 
+  const { data: health } = useHealth();
+  setTourFeatures({ voice: !!health?.voice_available });   // before findTour: skip steps for switched-off features
   const tour = findTour(activeId);
   const steps = tour?.steps ?? [];
   const step = steps[stepIndex];

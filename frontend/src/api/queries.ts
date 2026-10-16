@@ -23,6 +23,11 @@ export const queryKeys = {
   plan: (budget: number) => ["plan", budget] as const,
   model: ["model"] as const,
   enrichStatus: ["enrich-status"] as const,
+  me: ["me"] as const,
+  authConfig: ["auth-config"] as const,
+  chats: ["chats"] as const,
+  chat: (id: string) => ["chats", id] as const,
+  users: ["users"] as const,
 };
 
 /** 4xx means the request itself is wrong (e.g. unknown customer): retrying can't help. */
@@ -74,4 +79,29 @@ export const modelQuery = () => queryOptions({
   queryKey: queryKeys.model,
   queryFn: ({ signal }) => api.model(signal),
   ...MODEL_DATA,
+});
+
+/** The signed-in user and today's AI usage. A 401 here means "show the sign-in page". */
+export const meQuery = () => queryOptions({
+  queryKey: queryKeys.me,
+  queryFn: ({ signal }) => api.me(signal),
+  staleTime: 30_000,
+  retryOnMount: false,          // signed out stays signed out until someone signs in (no request loop)
+});
+
+export const authConfigQuery = () => queryOptions({
+  queryKey: queryKeys.authConfig,
+  queryFn: ({ signal }) => api.authConfig(signal),
+  staleTime: Infinity,
+});
+
+/** Your saved Copilot conversations, most recent first. */
+export const chatsQuery = () => queryOptions({
+  queryKey: queryKeys.chats,
+  queryFn: ({ signal }) => api.chats(signal),
+});
+
+export const usersQuery = () => queryOptions({
+  queryKey: queryKeys.users,
+  queryFn: ({ signal }) => api.users(signal),
 });

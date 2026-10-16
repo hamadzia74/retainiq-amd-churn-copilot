@@ -16,6 +16,7 @@ import re
 import threading
 import time
 from collections import deque
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Callable
 
@@ -34,6 +35,11 @@ RETRYABLE = {429, 502, 503}
 OnWait = Callable[[float, str], None]   # (seconds, reason)
 OnDelta = Callable[[str], None]         # a new piece of streamed answer text
 
+# Called with the provider's response after every successful call. The web app sets it to bill
+# each call to the signed-in user (api/usage.py); a ContextVar, so every request has its own.
+# Code that hands LLM work to other threads must carry the context along (contextvars.copy_context).
+USAGE_HOOK: ContextVar[Callable[[object], None] | None] = ContextVar("llm_usage_hook", default=None)
+
 
 @dataclass
 class StreamResult:
@@ -45,9 +51,10 @@ class StreamResult:
 class LLMError(Exception):
     """An LLM failure with a human-readable message. `fatal` = retrying won't help."""
 
-    def __init__(self, message: str, fatal: bool = False):
+    def __init__(self, message: str, fatal: bool = False, status: int | None = None):
         super().__init__(message)
         self.fatal = fatal
+        self.status = status          # provider HTTP status, when there was one
 
 
 class RateLimiter:
@@ -95,7 +102,7 @@ def _friendly(exc: APIStatusError) -> LLMError:
         return LLMError(f"Model {config.LLM_MODEL} is no longer offered. Pick one from GET /v1/models.", fatal=True)
     if code == 429:
         return LLMError("Still rate limited by the provider after several retries. Try again in a minute.")
-    return LLMError(f"LLM request failed ({code}): {msg}")
+    return LLMError(f"LLM request failed ({code}): {msg}", status=code)
 
 
 class LLM:
@@ -172,6 +179,11 @@ class LLM:
                 try:
                     result = fn()
                     log.info("chat ok in %.1fs (try %d)", time.perf_counter() - started, attempt)
+                    if hook := USAGE_HOOK.get():
+                        try:
+                            hook(result)
+                        except Exception:                  # usage accounting must never break an answer
+                            log.exception("usage hook failed")
                     return result
                 except APIStatusError as exc:
                     log.warning("chat HTTP %s after %.1fs (try %d)", exc.status_code, time.perf_counter() - started, attempt)

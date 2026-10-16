@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type { AtRiskParams } from "../api/client";
 import { api } from "../api/client";
 import {
-  atRiskQuery, customerQuery, dashboardQuery, healthQuery, modelQuery, planQuery,
+  atRiskQuery, chatsQuery, customerQuery, dashboardQuery, healthQuery, meQuery, modelQuery, planQuery,
 } from "../api/queries";
 
 export const useHealth = () => useQuery(healthQuery());
@@ -34,3 +34,6 @@ export function useTopAtRisk(n = 5) {
   const { rows } = useAtRiskList("", "value");
   return rows?.slice(0, n);
 }
+
+export const useMe = () => useQuery(meQuery());
+export const useChats = () => useQuery(chatsQuery());

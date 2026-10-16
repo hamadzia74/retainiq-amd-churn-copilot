@@ -139,12 +139,35 @@ and that choice is remembered. Tours are read-only: the page is locked while a t
 never submit, draft, enrich or chat for you. Esc closes a tour, ← and → move between steps, and
 completed tours get a ✓.
 
-**Development** (two terminals):
+**Development** (two terminals, after starting the database once):
 
 ```bash
+docker compose up -d db                           # PostgreSQL 18 on localhost:5433 (docker-compose.yml)
+# .env: ADMIN_EMAIL=you@example.com  ADMIN_PASSWORD=...   (the first admin is created at startup)
 uvicorn api.main:app --reload --port 8080        # API, docs at http://localhost:8080/docs
 cd frontend && npm install && npm run dev         # UI at http://localhost:5173 (proxies /api)
 ```
+
+Already have PostgreSQL? Skip Docker and set `DATABASE_URL=postgresql://user:password@localhost:5432/retainiq`
+(create the database first). Tables are created on startup.
+
+**Accounts and saved chats.** Everything except `/api/health` and sign-in needs an account.
+- **Sign-in** is email + password (Argon2id hashes). The session is a signed token in an httpOnly,
+  SameSite=Lax cookie (Secure on HTTPS), valid 7 days. The app adds an `X-RetainIQ` header to
+  every change, which blocks cross-site requests. Five wrong passwords lock that email + IP for 15 minutes.
+- **Invite-only by default.** The first admin comes from `ADMIN_EMAIL`/`ADMIN_PASSWORD`; admins
+  invite others on the **Users** page (or `python -m api.manage create-user you@x.com --role admin`).
+  `ALLOW_SIGNUP=true` opens self sign-up.
+- **Roles:** analysts use everything except enrichment; admins also run enrichment and manage users;
+  the optional **demo** account (`DEMO_EMAIL`/`DEMO_PASSWORD`) adds a one-click "Try the demo" button.
+- **Daily AI limits per person** (default 500 admin / 150 analyst / 40 demo calls) protect the AMD
+  quota on a public URL. Every LLM call is counted against whoever caused it, with its tokens; the
+  account menu shows "42 / 150 AI calls today". At the limit, the Copilot and win-back drafts answer
+  429 and follow-ups fall back to rules.
+- **Copilot conversations are saved** as they were shown: answer, progress trace and follow-ups. The
+  history panel opens, renames and deletes them; a reopened chat continues with its full context,
+  even after a restart. Nobody can see anyone else's chats.
+- Swagger (`/docs`): click **Authorize** and sign in with your email as the username.
 
 **Production (one URL):** `bash scripts/run_web.sh` builds React and serves the UI and API
 on `:8080`. With Token Factory the app needs no GPU, so any small CPU host works (Render,
@@ -162,8 +185,14 @@ profile, run it on the MI300X droplet next to `scripts/serve_amd.sh`.
 | `GET /api/model` | Model weights and accuracy |
 | `POST /api/enrich` · `GET /api/enrich/status` | LLM enrichment on AMD as a background job (409 if already running) |
 | `POST /api/agent/chat` `{session_id, message}` | Copilot, streamed as Server-Sent Events: `step` (progress) · `delta` (answer text) → `answer` → `done` |
-| `POST /api/agent/transcribe` (WAV body) | Voice input: 16 kHz mono WAV up to 60 s → transcript, using MiMo-V2.6-Flash on AMD Token Factory |
+| `POST /api/agent/transcribe` (WAV body) | Voice input: 16 kHz mono WAV up to 60 s → transcript (off unless `LLM_TRANSCRIBE_MODEL` is set: Token Factory doesn't accept audio yet) |
 | `POST /api/agent/suggestions` `{session_id}` | 3 follow-up questions for the latest exchange, `source: llm` or `rules` |
+| `GET /api/agent/sessions` · `GET/PATCH/DELETE /api/agent/sessions/{id}` | Your saved conversations: list, open, rename, delete |
+| `GET /api/auth/config` · `POST /api/auth/login` · `/demo` · `/logout` · `/signup` · `/password` | Sign-in (session cookie) |
+| `GET /api/auth/me` | You and today's AI usage |
+| `POST /api/auth/token` | Bearer token for Swagger and scripts |
+| `GET/POST /api/users` · `PATCH /api/users/{id}` | Admins: invite, change role, deactivate, reset password |
+| `GET /api/enrich/runs` | Admins: who ran enrichment, when, and how it ended |
 
 **Copilot progress, streaming and voice.** Answers stream in word by word. Above each one, a collapsible
 "How I got this" trace lists the steps the Copilot took in plain English ("Looked up at-risk VIP customers:
@@ -206,9 +235,12 @@ The same scripted session went from 21 requests to 12:
 | Copilot page | 1 | 0 |
 | Idle 2 minutes | 8 | 2 |
 
-**Tests** never call the real LLM endpoint:
+**Tests** never call the real LLM endpoint or touch your database:
 - **`pytest -q`:** every endpoint with the LLM offline, the enrich job and SSE chat against a
-  mocked LLM, the rate limiter, 429 retries, batch parsing, resume, health/quota caching and paging.
+  mocked LLM, the rate limiter, 429 retries, batch parsing, resume, health/quota caching and paging;
+  sign-in, CSRF, lockout, roles, saved and private chats, and daily limits. They use a temporary SQLite
+  file; to run them on PostgreSQL, point `TEST_DATABASE_URL` at an **empty test database** (its tables
+  are dropped first): `TEST_DATABASE_URL=postgresql://retainiq:retainiq@localhost:5433/retainiq_test pytest -q`.
 - **`cd frontend && npm test` (Vitest):** tour catalogue integrity, card placement, the tour store,
   narration (never overlaps), chart label layout and the data layer's request behaviour.
 
@@ -244,9 +276,14 @@ retainiq/
   ui.py                 all terminal rendering (rich)
 api/
   main.py               FastAPI app: lifespan builds ONE Engine, serves frontend/dist in prod
-  deps.py               shared state: engine, enrichment lock + job, chat sessions
+  deps.py               shared state: engine, enrichment lock + job, cache of chat agents
   schemas.py            Pydantic request/response models
-  routers/              system · dashboard · customers · campaigns · model · enrich · agent
+  settings.py           database, sign-in and daily-limit settings (.env)
+  db.py                 PostgreSQL tables: users, chats, messages, enrichment runs, AI usage
+  auth.py               passwords, session cookie, CSRF header, route guards, lockout
+  usage.py · chats.py   per-user AI metering + limits; saved conversations
+  manage.py             command-line account admin
+  routers/              system · account · users · dashboard · customers · campaigns · model · enrich · agent
 frontend/src/
   app/                  providers (theme, query cache, router, motion) and lazy routes
   api/                  typed client, query keys + cache rules (queries.ts), SSE reader
@@ -273,5 +310,5 @@ that have the same columns.
 
 ## Next
 
-Auth and a database, live connectors (Shopify, Zendesk), and uplift values learned from real
-campaign results and editable in the UI.
+Live connectors (Shopify, Zendesk), uplift values learned from real campaign results and
+editable in the UI, and database migrations (Alembic) once the schema starts changing.

@@ -218,3 +218,129 @@ class Transcript(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str = Field(min_length=1, max_length=64)
     message: str = Field(min_length=1, max_length=2000)
+
+
+# ---------------------------------------------------------------------------- accounts
+Role = Literal["admin", "analyst", "demo"]
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class SignupRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=8, max_length=200)
+
+
+class UsageToday(BaseModel):
+    day: str
+    calls: int
+    limit: int
+    remaining: int
+    tokens_in: int
+    tokens_out: int
+    by_feature: dict[str, int]
+
+
+class Me(BaseModel):
+    id: int
+    email: str
+    name: str
+    role: Role
+    usage: UsageToday
+
+
+class AuthConfig(BaseModel):
+    signup: bool
+    demo: bool
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+
+
+class UserRow(BaseModel):
+    id: int
+    email: str
+    name: str
+    role: Role
+    is_active: bool
+    created_at: str | None
+    last_login_at: str | None
+    usage: UsageToday
+
+
+class NewUser(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=8, max_length=200)
+    role: Role = "analyst"
+
+
+class UserUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=80)
+    role: Role | None = None
+    is_active: bool | None = None
+    password: str | None = Field(None, min_length=8, max_length=200)
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+# ---------------------------------------------------------------------------- saved chats
+class ChatSummary(BaseModel):
+    id: str
+    title: str
+    questions: int
+    created_at: str | None
+    updated_at: str | None
+
+
+class SavedStep(BaseModel):
+    id: str
+    status: str
+    label: str
+    summary: str | None = None
+    details: list[str] | None = None
+    ms: int | None = None
+
+
+class SavedMessage(BaseModel):
+    id: int
+    role: Literal["user", "assistant"]
+    text: str
+    steps: list[SavedStep]
+    suggestions: list[str] | None
+    duration_ms: int | None
+    error: bool
+    created_at: str | None
+
+
+class ChatDetail(BaseModel):
+    id: str
+    title: str
+    created_at: str | None
+    updated_at: str | None
+    messages: list[SavedMessage]
+
+
+class ChatRename(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class EnrichRunRow(BaseModel):
+    id: int
+    user: str | None
+    force: bool
+    state: str
+    rows_done: int
+    rows_total: int
+    error: str | None
+    started_at: str | None
+    finished_at: str | None

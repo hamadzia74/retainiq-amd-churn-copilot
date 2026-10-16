@@ -11,6 +11,7 @@ still runs - but it misses nuance and is clearly labelled.
 Each signal: {sentiment, category, churn_threat, summary, source}
 """
 
+import contextvars
 import json
 import logging
 import time
@@ -154,7 +155,8 @@ def enrich_llm(llm: LLM, records: list[tuple[str, str]],
 
     pool = ThreadPoolExecutor(max_workers=config.LLM_CONCURRENCY)
     try:
-        for fut in as_completed([pool.submit(work, b) for b in batches]):
+        # Each batch carries the caller's context, so the web app can bill its calls (llm.USAGE_HOOK).
+        for fut in as_completed([pool.submit(contextvars.copy_context().run, work, b) for b in batches]):
             out, p, c, n, failed = fut.result()
             signals.update(out)
             for key, v in zip(("prompt_tokens", "completion_tokens", "requests", "failed"), (p, c, n, failed)):

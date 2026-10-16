@@ -1,7 +1,7 @@
 // Reads the agent's Server-Sent Events stream. The endpoint is a POST, which
 // EventSource can't do, so we parse the stream from fetch() ourselves.
 
-import { ApiError } from "./client";
+import { APP_HEADER, ApiError, failure } from "./client";
 import type { AgentStep } from "./types";
 
 export interface ChatHandlers {
@@ -20,14 +20,13 @@ export interface ChatHandlers {
 export async function streamChat(sessionId: string, message: string, h: ChatHandlers, signal?: AbortSignal) {
   const res = await fetch("/api/agent/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...APP_HEADER },
     body: JSON.stringify({ session_id: sessionId, message }),
     signal,
   });
-  if (!res.ok || !res.body) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.detail ?? res.statusText);
-  }
+  if (!res.ok) throw await failure(res, "/agent/chat");
+  if (!res.body) throw new ApiError(res.status, "The answer stream didn't open. Try again.");
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

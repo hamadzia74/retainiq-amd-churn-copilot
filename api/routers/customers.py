@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from retainiq import serializers as ser
 from retainiq.engine import Engine
 
+from .. import usage
+from ..auth import UserDep
 from ..deps import get_engine
 from ..schemas import AtRiskRow, Customer360, Tier, WinBackMessage
 
@@ -33,9 +35,12 @@ def customer(customer_id: str, engine: EngineDep):
 
 
 @router.post("/{customer_id}/message", response_model=WinBackMessage)
-def message(customer_id: str, engine: EngineDep):
-    """LLM-written when the AMD endpoint is up; otherwise a template, marked source='template'."""
-    m = engine.draft_message(customer_id)
+def message(customer_id: str, engine: EngineDep, user: UserDep):
+    """LLM-written when the AMD endpoint is up; otherwise a template, marked source='template'.
+    Counts toward the daily AI limit (429 once it is used up)."""
+    if engine.llm.available:
+        usage.check_limit(user)
+    m = usage.metered(user, "message").run(engine.draft_message, customer_id)
     if not m:
         raise HTTPException(404, f"No active customer {customer_id}")
     return ser.message(m)

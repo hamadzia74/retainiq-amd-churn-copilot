@@ -11,10 +11,13 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 
+from .conftest import sign_in
+
 
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:
+        sign_in(c)
         yield c
 
 

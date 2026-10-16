@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APP_ROUTES, findTour, runnableTours, TOURS, tourMinutes } from "./catalogue";
+import { APP_ROUTES, findTour, runnableTours, setTourFeatures, TOURS, tourMinutes } from "./catalogue";
 
 describe("tour catalogue", () => {
   const all = TOURS.flatMap((t) => [t, ...(t.subTours ?? [])]);
@@ -27,6 +27,16 @@ describe("tour catalogue", () => {
         if (step.advanceOn === "target-click") expect(step.target, `${tour.id}: click step needs a target`).toBeDefined();
       }
     }
+  });
+
+  it("leaves out the voice step unless voice is switched on", () => {
+    const titles = () => findTour("copilot")!.steps!.map((s) => s.title);
+    setTourFeatures({ voice: false });
+    expect(titles()).not.toContain("Ask by voice");
+    setTourFeatures({ voice: true });
+    expect(titles()).toContain("Ask by voice");
+    setTourFeatures({ voice: false });
+    for (const tour of runnableTours()) expect(tour.steps![0].requires, `${tour.id}: first step must always show`).toBeUndefined();
   });
 
   it("estimates each tour's length in whole minutes", () => {

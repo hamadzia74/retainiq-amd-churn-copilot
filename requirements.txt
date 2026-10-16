@@ -19,6 +19,13 @@ python-dotenv>=1.0
 fastapi>=0.110
 uvicorn[standard]>=0.29
 
+# Accounts, saved chats and AI usage (api/db.py, api/auth.py) in PostgreSQL (docker-compose.yml)
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+pyjwt>=2.8
+pwdlib[argon2]>=0.2
+python-multipart>=0.0.9
+
 # Tests (tests/)
 pytest>=8.0
 httpx>=0.27

@@ -179,6 +179,7 @@ export const TOURS: Tour[] = [
       },
       {
         target: "mic-button",
+        requires: "voice",
         title: "Ask by voice",
         body: "Tap the microphone, ask your question, then tap stop. It's transcribed on AMD and put in the box, so you can check it before you press Send.",
       },
@@ -196,6 +197,11 @@ export const TOURS: Tour[] = [
         target: "message-list",
         title: "Long conversations",
         body: "The conversation scrolls on its own as answers arrive. If you scroll up to read, a Jump to latest button brings you back.",
+      },
+      {
+        target: "chat-history",
+        title: "Your conversations",
+        body: "Every conversation is saved to your account. Open one to pick up where you left off, rename it, or delete it.",
       },
     ],
   },
@@ -230,13 +236,24 @@ export const TOURS: Tour[] = [
   },
 ];
 
-/** Find a tour (or sub-tour) by id. */
+// Optional features the server reports (GET /api/health). Steps that need a missing feature are left out.
+let features = { voice: false };
+const filtered = new Map<string, Tour>();
+
+export function setTourFeatures(next: { voice: boolean }) {
+  if (next.voice !== features.voice) filtered.clear();
+  features = next;
+}
+
+/** Find a tour (or sub-tour) by id, without steps for features that are switched off. */
 export function findTour(id: string | null): Tour | undefined {
   if (!id) return undefined;
   for (const t of TOURS) {
-    if (t.id === id) return t;
-    const sub = t.subTours?.find((s) => s.id === id);
-    if (sub) return sub;
+    const found = t.id === id ? t : t.subTours?.find((s) => s.id === id);
+    if (!found) continue;
+    if (!found.steps) return found;
+    if (!filtered.has(id)) filtered.set(id, { ...found, steps: found.steps.filter((s) => !s.requires || features[s.requires]) });
+    return filtered.get(id);
   }
   return undefined;
 }

@@ -1,6 +1,7 @@
 import type { Health } from "../../api/types";
 import { Button, Card, ErrorState, Notice, ProgressBar, Stat, StatGrid } from "../../components/ui";
 import { useEnrichJob } from "../../hooks/useEnrichJob";
+import { useAuth } from "../auth";
 import { pct } from "../../lib/format";
 
 /** Start/resume the LLM enrichment job on AMD, watch progress, see the results. */
@@ -9,8 +10,9 @@ export function EnrichmentPanel({ health }: { health?: Health }) {
   const running = status?.state === "running";
   const plan = status?.plan;
   const s = status?.stats;
+  const { isAdmin } = useAuth();
   const provider = health?.llm_provider_name ?? "AMD";
-  const canRun = !!health?.llm_available && !running && !start.isPending;
+  const canRun = isAdmin && !!health?.llm_available && !running && !start.isPending;
   const progress = status?.total ? status.done / status.total : 0;
 
   return (
@@ -27,6 +29,9 @@ export function EnrichmentPanel({ health }: { health?: Health }) {
         </div>
       }>
       {!health?.llm_available && <Notice className="mb-3">The LLM is unavailable, so enrichment is disabled.</Notice>}
+      {health?.llm_available && !isAdmin && (
+        <Notice className="mb-3">Only admins can run enrichment: it uses the most AI quota. You can still watch its progress here.</Notice>
+      )}
 
       {plan && !running && (
         <p className="text-sm text-soft">

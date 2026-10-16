@@ -1,5 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { api } from "../../../api/client";
+import { queryKeys } from "../../../api/queries";
 import { initialRecorder, recorderReducer } from "./recorderState";
 import { toWav16k } from "./wav";
 
@@ -21,6 +23,7 @@ function micError(err: unknown): string {
  */
 export function useRecorder(onText: (text: string) => void) {
   const [state, dispatch] = useReducer(recorderReducer, initialRecorder);
+  const qc = useQueryClient();
   const media = useRef<{ stream?: MediaStream; recorder?: MediaRecorder; ctx?: AudioContext; raf?: number; timer?: number }>({});
   const cancelled = useRef(false);
   const onTextRef = useRef(onText);
@@ -74,6 +77,7 @@ export function useRecorder(onText: (text: string) => void) {
         onTextRef.current(text);
       } catch (err) {
         dispatch({ type: "failed", error: (err as Error).message || "Couldn't transcribe that. Try again." });
+        void qc.invalidateQueries({ queryKey: queryKeys.health });   // the server may have switched voice off
       }
     };
 

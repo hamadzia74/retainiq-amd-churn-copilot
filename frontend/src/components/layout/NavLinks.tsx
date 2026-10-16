@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { NavLink } from "react-router-dom";
+import { useMe } from "../../hooks/queries";
 import { SPRING } from "../../motion/variants";
 
 export const NAV_ITEMS = [
@@ -10,11 +11,15 @@ export const NAV_ITEMS = [
   { to: "/amd", label: "Powered by AMD", icon: "▲" },
 ] as const;
 
+const ADMIN_ITEMS = [{ to: "/users", label: "Users", icon: "◈" }] as const;
+
 /** Vertical navigation. The active highlight slides between items (`layoutId` must be unique per list). */
 export function NavLinks({ layoutId, onNavigate }: { layoutId: string; onNavigate?: () => void }) {
+  const { data: me } = useMe();
+  const items = me?.role === "admin" ? [...NAV_ITEMS, ...ADMIN_ITEMS] : NAV_ITEMS;
   return (
     <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.map(({ to, label, icon }) => (
+      {items.map(({ to, label, icon }) => (
         <NavLink key={to} to={to} end={to === "/"} onClick={onNavigate}
           className={({ isActive }) => `relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors max-md:min-h-11 ${
             isActive ? "font-medium text-strong" : "text-muted hover:bg-hover hover:text-fg"}`}>

@@ -47,6 +47,11 @@ def _tool_call_dict(tc) -> dict:
     return {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
 
 
+def _jsonable(o):
+    """numpy numbers -> plain numbers; anything else -> its text."""
+    return o.item() if hasattr(o, "item") else str(o)
+
+
 def _ms(since: float) -> int:
     return round((time.perf_counter() - since) * 1000)
 
@@ -56,6 +61,24 @@ class Agent:
         self.engine = engine
         self.history: list[dict] = [{"role": "system", "content": AGENT_SYSTEM}]
         self.turns: list[Turn] = []
+
+    # ---------------------------------------------------------------- saving
+    def to_state(self) -> dict:
+        """A JSON-safe snapshot, so a saved conversation can be reopened with its full context."""
+        turns = [{"question": t.question, "answer": t.answer,
+                  "tools": [{"name": u.name, "args": u.args, "result": u.result} for u in t.tools]} for t in self.turns]
+        return json.loads(json.dumps({"history": self.history[1:], "turns": turns}, default=_jsonable))
+
+    @classmethod
+    def from_state(cls, engine: Engine, state: dict | None) -> "Agent":
+        """Rebuild an agent from `to_state()`. The system prompt is always the current one."""
+        agent = cls(engine)
+        if state:
+            agent.history += state.get("history") or []
+            agent.turns = [Turn(t["question"], t.get("answer"), [ToolUse(u["name"], u.get("args") or {}, u.get("result"))
+                                                                  for u in t.get("tools") or []])
+                           for t in state.get("turns") or []]
+        return agent
 
     @property
     def last_turn(self) -> Turn | None:

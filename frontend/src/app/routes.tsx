@@ -10,6 +10,7 @@ const Customer360 = lazy(() => import("../pages/Customer360"));
 const Campaign = lazy(() => import("../pages/Campaign"));
 const Copilot = lazy(() => import("../pages/Copilot"));
 const Amd = lazy(() => import("../pages/Amd"));
+const Users = lazy(() => import("../pages/Users"));
 
 const page = (el: ReactNode) => <Suspense fallback={<Loading />}>{el}</Suspense>;
 
@@ -23,6 +24,7 @@ export function AppRoutes() {
         <Route path="campaign" element={page(<Campaign />)} />
         <Route path="copilot" element={page(<Copilot />)} />
         <Route path="amd" element={page(<Amd />)} />
+        <Route path="users" element={page(<Users />)} />
         <Route path="*" element={<p className="text-muted">Page not found.</p>} />
       </Route>
     </Routes>

@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { AccountDetails } from "../../features/auth";
 import { TourLauncher } from "../../features/tours";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { ThemeToggle } from "../../theme/ThemeToggle";
@@ -36,9 +37,12 @@ export function MobileNav() {
           <Button variant="icon" aria-label="Close menu" onClick={close}><X size={20} strokeWidth={2} /></Button>
         </div>
         <div className="p-2"><NavLinks layoutId="nav-active-mobile" onNavigate={close} /></div>
-        <div className="mt-auto border-t border-line p-3">
-          <p className="mb-2 text-xs text-muted">Theme</p>
-          <ThemeToggle />
+        <div className="mt-auto space-y-4 border-t border-line p-3">
+          <AccountDetails onAction={close} />
+          <div>
+            <p className="mb-2 text-xs text-muted">Theme</p>
+            <ThemeToggle />
+          </div>
         </div>
       </Drawer>
     </>

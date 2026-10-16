@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 from openai.types.chat import ChatCompletionMessageToolCall
 
 from api.main import app
+
+from .conftest import sign_in
 from retainiq import signals
 
 USAGE = NS(prompt_tokens=100, completion_tokens=30)
@@ -57,6 +59,7 @@ def client():
     mp = pytest.MonkeyPatch()
     mp.setattr("retainiq.engine.signals.save_cache", lambda s: None)   # don't touch data/signals.json
     with TestClient(app) as c:
+        sign_in(c)
         engine = app.state.retainiq.engine
         engine.signals = signals.heuristic_all(engine.records)     # known start, whatever data/signals.json holds
         llm = engine.llm

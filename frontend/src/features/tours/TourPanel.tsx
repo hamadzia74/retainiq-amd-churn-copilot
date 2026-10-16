@@ -2,11 +2,14 @@ import { Check, Play, RotateCcw, X } from "lucide-react";
 import { motion } from "motion/react";
 import { Modal } from "../../components/ui";
 import { rowVariants } from "../../motion/variants";
-import { TOURS, tourMinutes } from "./catalogue";
+import { findTour, TOURS, tourMinutes } from "./catalogue";
 import { tourStore, useTourState } from "./tourStore";
 import type { Tour } from "./types";
 
-const meta = (t: Tour) => `${t.steps?.length ?? 0} steps · about ${tourMinutes(t)} min`;
+const meta = (tour: Tour) => {
+  const t = findTour(tour.id) ?? tour;      // counts only the steps that will actually be shown
+  return `${t.steps?.length ?? 0} steps · about ${tourMinutes(t)} min`;
+};
 
 /** Start (or replay, once watched) one tour. */
 function StartButton({ tour, done }: { tour: Tour; done: boolean }) {
