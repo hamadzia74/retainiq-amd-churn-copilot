@@ -19,7 +19,7 @@ from retainiq.config import ROOT
 from retainiq.engine import Engine
 from retainiq.llm import LLMError
 
-from . import auth, db, settings
+from . import auth, db, settings, signal_store
 from .deps import AppState
 from .routers import account, agent, campaigns, customers, dashboard, enrich, model, system, users
 
@@ -30,6 +30,7 @@ DIST = ROOT / "frontend" / "dist"
 async def lifespan(app: FastAPI):
     await run_in_threadpool(db.init, settings.DATABASE_URL)
     await run_in_threadpool(auth.ensure_accounts)
+    await run_in_threadpool(signal_store.restore)          # enrichment results survive a wiped disk
     # One Engine per process: data load + model training happen once, here.
     engine = await run_in_threadpool(Engine)
     await run_in_threadpool(lambda: engine.llm.available)

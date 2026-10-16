@@ -169,10 +169,20 @@ Already have PostgreSQL? Skip Docker and set `DATABASE_URL=postgresql://user:pas
   even after a restart. Nobody can see anyone else's chats.
 - Swagger (`/docs`): click **Authorize** and sign in with your email as the username.
 
-**Production (one URL):** `bash scripts/run_web.sh` builds React and serves the UI and API
-on `:8080`. With Token Factory the app needs no GPU, so any small CPU host works (Render,
-Railway, Fly.io, a Hugging Face Space). Set the `.env` values as host secrets. With the `vllm`
-profile, run it on the MI300X droplet next to `scripts/serve_amd.sh`.
+**Production (one HTTPS URL, free):** a Hugging Face Space (Docker) runs the app, Neon runs PostgreSQL.
+See [PROMPT_DEPLOY.md](PROMPT_DEPLOY.md) for the one-time setup, then:
+
+```bash
+copy .env.production.example .env.production      # real values; gitignored, never uploaded
+python scripts/deploy_space.py <hf-user>/retainiq  # creates the Space, sets Secrets, uploads code only
+```
+
+The `Dockerfile` builds React and serves UI + API on port 7860 (`docker build -t retainiq .` works on any
+Docker host). Enrichment results are also kept in Postgres, so a restart that wipes the disk doesn't
+lose the AI's reading of tickets and reviews. Share the direct `https://<user>-retainiq.hf.space` URL:
+inside the huggingface.co page the app is in a frame, where browsers block sign-in cookies.
+Without Docker, `bash scripts/run_web.sh` builds React and serves everything on `:8080`; with the `vllm`
+profile, run that on the MI300X droplet next to `scripts/serve_amd.sh`.
 
 | Endpoint | Purpose |
 |---|---|

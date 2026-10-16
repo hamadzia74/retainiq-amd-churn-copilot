@@ -90,6 +90,15 @@ class EnrichRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class StoredValue(Base):
+    """Small named blobs the app must keep across restarts on hosts that wipe their disk
+    (e.g. the LLM's reading of every ticket and review - see signal_store.py)."""
+    __tablename__ = "app_values"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict] = mapped_column(Json)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class Usage(Base):
     """AI calls per user, per UTC day, per feature (chat, suggest, message, transcribe, enrich)."""
     __tablename__ = "llm_usage"

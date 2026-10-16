@@ -6,12 +6,21 @@ import { api } from "../../api/client";
 import { authConfigQuery } from "../../api/queries";
 import type { Me } from "../../api/types";
 import { Logo } from "../../components/layout/Logo";
-import { Button, ErrorState, Spinner, TextField } from "../../components/ui";
+import { Button, ErrorState, Notice, Spinner, TextField } from "../../components/ui";
 import { fadeUp } from "../../motion/variants";
 import { ThemeToggle } from "../../theme/ThemeToggle";
 import { useSignedIn } from "./useAuth";
 
 type Mode = "signin" | "signup";
+
+/** Inside another site's frame (e.g. the huggingface.co Space page) browsers block sign-in cookies. */
+function isEmbedded() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;                       // a cross-origin parent: definitely embedded
+  }
+}
 
 /** Sign in (or, when the server allows it, create an account). A one-click demo when enabled. */
 export function LoginPage() {
@@ -46,6 +55,15 @@ export function LoginPage() {
       <main className="flex flex-1 items-center justify-center px-4 pb-16">
         <motion.div variants={fadeUp} initial="hidden" animate="show" className="w-full max-w-sm">
           <div className="mb-6 flex justify-center"><Logo /></div>
+
+          {isEmbedded() && (
+            <Notice className="mb-4">
+              This page is shown inside another site, where your browser blocks sign-in.{" "}
+              <a href={window.location.href} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                Open RetainIQ in a new tab
+              </a>
+            </Notice>
+          )}
 
           <section className="rounded-xl border border-line bg-panel p-5 sm:p-6">
             <h1 className="text-lg font-semibold text-strong">{mode === "signin" ? "Sign in" : "Create your account"}</h1>

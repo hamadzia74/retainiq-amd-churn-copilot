@@ -1,0 +1,15 @@
+# Never in the image: secrets, local data, virtualenvs, builds, caches.
+.env
+.env.*
+.venv/
+.git/
+data/
+docs/
+tests/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+PROMPT*.md

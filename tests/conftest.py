@@ -27,6 +27,16 @@ os.environ["DEMO_PASSWORD"] = "demo-password"
 os.environ["DAILY_AI_CALLS_ADMIN"] = "100000"     # the limit itself is tested with a patched value
 os.environ.pop("ALLOW_SIGNUP", None)
 
+# Tests work on a copy of data/signals.json, so nothing they save or restore touches the real one.
+import shutil                                            # noqa: E402
+
+from retainiq import config                              # noqa: E402
+
+_signals_copy = Path(tempfile.mkdtemp(prefix="retainiq-signals-")) / "signals.json"
+if config.SIGNALS_CACHE.exists():
+    shutil.copyfile(config.SIGNALS_CACHE, _signals_copy)
+config.SIGNALS_CACHE = _signals_copy
+
 if os.getenv("TEST_DATABASE_URL", "").strip():           # a PostgreSQL test database: start from empty tables
     from sqlalchemy import create_engine
 

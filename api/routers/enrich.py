@@ -1,6 +1,7 @@
 """LLM enrichment on AMD as a background job: POST starts it, GET polls it. Admins only start it
 (it spends the most quota); every run is recorded with who started it and how it ended."""
 
+import logging
 import threading
 from typing import Annotated
 
@@ -9,7 +10,9 @@ from sqlalchemy import select
 
 from retainiq.llm import LLMError
 
-from .. import db, usage
+from .. import db, signal_store, usage
+
+log = logging.getLogger(__name__)
 from ..auth import AdminDep, UserDep
 from ..deps import AppState, get_state, require_llm
 from ..schemas import EnrichRunRow, EnrichStatus
@@ -60,6 +63,11 @@ def start(state: StateDep, admin: AdminDep, force: bool = False):
         except Exception as exc:
             job.update(state="error", error=f"{type(exc).__name__}: {exc}")
         finally:
+            try:
+                if job["done"]:
+                    signal_store.save(engine.signals)       # keep what was read, even after an error
+            except Exception:
+                log.exception("could not save enrichment results to the database")
             state.enrich_lock.release()
             _finish_run(run_id, state=job["state"], rows_done=job["done"], error=job["error"])
 
