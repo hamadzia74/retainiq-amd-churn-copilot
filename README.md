@@ -169,8 +169,17 @@ Already have PostgreSQL? Skip Docker and set `DATABASE_URL=postgresql://user:pas
   even after a restart. Nobody can see anyone else's chats.
 - Swagger (`/docs`): click **Authorize** and sign in with your email as the username.
 
-**Production (one HTTPS URL, free):** a Hugging Face Space (Docker) runs the app, Neon runs PostgreSQL.
-See [PROMPT_DEPLOY.md](PROMPT_DEPLOY.md) for the one-time setup, then:
+**Production on Vercel (free, no card):** import the GitHub repo in Vercel (the FastAPI preset is
+detected from `app.py`; `vercel.json` builds React), paste `.env.production` into Environment Variables,
+deploy. Neon runs PostgreSQL. Enrichment takes longer than a serverless request may run, so run it once
+from your computer straight into the production database; the site loads the results at startup:
+
+```bash
+python -m api.manage --env-file .env.production enrich   # spends AMD quota; asks first
+```
+
+**Production on a Docker host** (any provider): a Hugging Face Space (Docker) or similar runs the app,
+Neon runs PostgreSQL. See [PROMPT_DEPLOY.md](PROMPT_DEPLOY.md) for the one-time setup, then:
 
 ```bash
 copy .env.production.example .env.production      # real values; gitignored, never uploaded

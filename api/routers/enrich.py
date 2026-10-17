@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
+from retainiq import config
 from retainiq.llm import LLMError
 
 from .. import db, signal_store, usage
@@ -34,6 +35,10 @@ def _finish_run(run_id: int, **fields) -> None:
 def start(state: StateDep, admin: AdminDep, force: bool = False):
     """Read pending tickets & reviews with the LLM on AMD (resumable). `force` re-reads everything. Admins only."""
     engine = state.engine
+    if config.SERVERLESS:
+        raise HTTPException(409, "Enrichment takes several minutes, longer than this host allows per request. "
+                                 "Run it once with `python -m api.manage enrich`; this site loads the results "
+                                 "from the database.")
     require_llm(engine)
     usage.check_limit(admin)
     if not state.enrich_lock.acquire(blocking=False):

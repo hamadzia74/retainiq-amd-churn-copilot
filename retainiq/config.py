@@ -17,7 +17,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT / "data"
+# Serverless hosts (Vercel sets VERCEL=1) only allow writing under /tmp, so the generated dataset
+# and the signals cache live there; RETAINIQ_DATA_DIR overrides the location anywhere.
+SERVERLESS = bool(os.getenv("VERCEL"))
+DATA_DIR = Path(os.getenv("RETAINIQ_DATA_DIR") or ("/tmp/retainiq-data" if SERVERLESS else ROOT / "data"))
 SIGNALS_CACHE = DATA_DIR / "signals.json"
 
 # The synthetic store's "today". Fixed so every run gives the same numbers.

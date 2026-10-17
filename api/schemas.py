@@ -29,6 +29,7 @@ class Health(BaseModel):
     llm_share: float
     quota: Quota | None
     voice_available: bool
+    enrich_available: bool          # false on serverless hosts: enrichment runs offline (api.manage enrich)
     active_customers: int
 
 

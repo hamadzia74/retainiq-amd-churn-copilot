@@ -17,6 +17,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
+from retainiq import config
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -134,8 +136,10 @@ def init(url: str) -> Engine:
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
     else:
-        # The SSE chat and the enrichment job hold a thread each, so allow a few more than the default 5.
-        _engine = create_engine(url, pool_size=10, max_overflow=10, pool_pre_ping=True, pool_recycle=1800,
+        # A server: the SSE chat and the enrichment job hold a thread each, so a few more than the default 5.
+        # Serverless: many small instances share the database's connection limit, so each keeps very few.
+        pool = {"pool_size": 2, "max_overflow": 3} if config.SERVERLESS else {"pool_size": 10, "max_overflow": 10}
+        _engine = create_engine(url, **pool, pool_pre_ping=True, pool_recycle=300 if config.SERVERLESS else 1800,
                                 connect_args={"connect_timeout": 5, "application_name": "retainiq"})
     try:
         Base.metadata.create_all(_engine)

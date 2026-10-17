@@ -1,5 +1,23 @@
 # Phase: Deploy RetainIQ over HTTPS (free)
 
+> **Update 2026-10-17: deploying on Vercel.** Hugging Face now requires PRO ($9/month) for Docker
+> Spaces, and Render's card check failed. Vercel's free Hobby plan needs no card and fits:
+> Python bundles up to 500 MB (ours ~403 MB), 2 GB / 1 vCPU, 300 s per request, streaming and
+> FastAPI lifespan supported.
+>
+> What changed for Vercel:
+> - `app.py` (entrypoint) + `vercel.json` (builds React, 300 s max, keeps dev files out of the bundle)
+>   + `.python-version` (3.13) + `.vercelignore` (secrets and local data never uploaded).
+> - On Vercel (`VERCEL=1`) the dataset and signals cache live in `/tmp` (the only writable place),
+>   the database pool is small per instance, and **enrichment is switched off** (it takes ~8 min,
+>   longer than a request may run). Run it once from your PC straight into Neon:
+>   `python -m api.manage --env-file .env.production enrich`; every Vercel instance loads the
+>   results from the database at startup.
+> - Steps: push to GitHub → Vercel → Add New → Project → import the repo (FastAPI is detected) →
+>   Environment Variables: paste `.env.production` → Deploy. URL: `https://<project>.vercel.app`.
+>
+> The Hugging Face / Docker notes below still apply to any Docker host.
+
 ## Goal
 One public HTTPS URL judges can open, sign in to with one click ("Try the demo"), and use
 end to end - with the LLM on AMD Token Factory, data in PostgreSQL, and no secret in any repo.

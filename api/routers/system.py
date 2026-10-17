@@ -19,5 +19,5 @@ def health(engine: Annotated[Engine, Depends(get_engine)]):
             "llm_provider": config.LLM_PROVIDER, "llm_provider_name": config.LLM_PROVIDER_NAME,
             "llm_model": config.LLM_MODEL, "llm_hardware": config.LLM_HARDWARE, "llm_label": llm.label,
             "llm_share": round(engine.llm_share, 3), "quota": llm.usage() if llm.available else None,
-            "voice_available": voice_available(llm),
+            "voice_available": voice_available(llm), "enrich_available": not config.SERVERLESS,
             "active_customers": len(engine.scored)}

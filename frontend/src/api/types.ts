@@ -23,6 +23,8 @@ export interface Health {
   llm_share: number;
   quota: Quota | null;
   voice_available: boolean;
+  /** False on serverless hosts: enrichment runs offline and the results are loaded from the database. */
+  enrich_available: boolean;
   active_customers: number;
 }
 

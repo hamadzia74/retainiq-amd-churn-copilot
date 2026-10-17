@@ -1,0 +1,11 @@
+# Never uploaded to Vercel: secrets, local data, virtualenvs, builds, caches.
+.env
+.env.*
+!.env.example
+!.env.production.example
+.venv/
+data/
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+.pytest_cache/

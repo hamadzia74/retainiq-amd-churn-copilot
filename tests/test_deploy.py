@@ -34,6 +34,35 @@ def test_signals_are_restored_after_the_disk_is_wiped(tmp_path, monkeypatch):
         assert s.get(db.StoredValue, "signals").value == {"t1": llm(0.5), "t2": llm(0.1)}
 
 
+def test_serverless_hosts_turn_enrichment_off(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from api.main import app
+
+    from .conftest import sign_in
+    with TestClient(app) as c:
+        sign_in(c)
+        assert c.get("/api/health").json()["enrich_available"] is True
+        monkeypatch.setattr(config, "SERVERLESS", True)
+        assert c.get("/api/health").json()["enrich_available"] is False
+        r = c.post("/api/enrich")
+        assert r.status_code == 409 and "api.manage enrich" in r.json()["detail"]
+
+
+def test_vercel_entrypoint_and_config():
+    import json
+
+    import app as entry
+    from api.main import app
+    assert entry.app is app                                           # Vercel's FastAPI preset finds `app` in app.py
+    cfg = json.loads((ROOT / "vercel.json").read_text())
+    assert "npm run build" in cfg["buildCommand"]
+    excluded = cfg["functions"]["app.py"]["excludeFiles"]
+    assert "frontend/node_modules/**" in excluded and "data/**" in excluded
+    ignore = (ROOT / ".vercelignore").read_text()
+    assert ".env" in ignore and ".env.*" in ignore
+
+
 def _deploy_module():
     spec = importlib.util.spec_from_file_location("deploy_space", ROOT / "scripts" / "deploy_space.py")
     mod = importlib.util.module_from_spec(spec)
@@ -51,6 +80,17 @@ def test_space_upload_is_code_only():
         assert not name.startswith(".env"), f
         assert "node_modules" not in f and "__pycache__" not in f and not f.startswith(("data/", ".venv/", "frontend/dist/")), f
         assert not name.endswith((".db", ".pyc")) and name != ".jwt_secret", f
+
+
+def test_placeholders_and_weak_values_are_refused():
+    deploy = _deploy_module()
+    example = deploy.read_env(ROOT / ".env.production.example")
+    problems = " | ".join(deploy.check(example))
+    assert "DATABASE_URL is still the example" in problems and "LLM_API_KEY is still the example" in problems
+    assert "JWT_SECRET is missing" in problems and "ADMIN_PASSWORD is missing" in problems
+    good = {"LLM_API_KEY": "rc-real", "DATABASE_URL": "postgresql://u:p@ep-cool-1.us-east-1.aws.neon.tech/neondb",
+            "JWT_SECRET": "x" * 40, "ADMIN_EMAIL": "me@x.dev", "ADMIN_PASSWORD": "a-long-password"}
+    assert deploy.check(good) == []
 
 
 def test_env_file_parsing(tmp_path):

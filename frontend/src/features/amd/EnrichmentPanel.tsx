@@ -12,7 +12,8 @@ export function EnrichmentPanel({ health }: { health?: Health }) {
   const s = status?.stats;
   const { isAdmin } = useAuth();
   const provider = health?.llm_provider_name ?? "AMD";
-  const canRun = isAdmin && !!health?.llm_available && !running && !start.isPending;
+  const offline = health?.enrich_available === false;          // serverless deployment: run it from a computer
+  const canRun = isAdmin && !offline && !!health?.llm_available && !running && !start.isPending;
   const progress = status?.total ? status.done / status.total : 0;
 
   return (
@@ -29,7 +30,13 @@ export function EnrichmentPanel({ health }: { health?: Health }) {
         </div>
       }>
       {!health?.llm_available && <Notice className="mb-3">The LLM is unavailable, so enrichment is disabled.</Notice>}
-      {health?.llm_available && !isAdmin && (
+      {offline && (
+        <Notice className="mb-3">
+          On this deployment, enrichment runs once from a computer (it takes several minutes) and the results are
+          loaded here from the database, so the churn model and dashboard already use the latest run.
+        </Notice>
+      )}
+      {health?.llm_available && !offline && !isAdmin && (
         <Notice className="mb-3">Only admins can run enrichment: it uses the most AI quota. You can still watch its progress here.</Notice>
       )}
 

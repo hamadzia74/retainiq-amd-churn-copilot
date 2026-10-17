@@ -82,6 +82,10 @@ def check(secrets: dict[str, str]) -> list[str]:
     url = secrets.get("DATABASE_URL", "")
     if url and ("localhost" in url or "127.0.0.1" in url):
         problems.append("DATABASE_URL points at localhost - use your Neon connection string")
+    if "USER:PASSWORD" in url or "ep-xxxx" in url:
+        problems.append("DATABASE_URL is still the example - paste your Neon connection string")
+    if "paste-your" in secrets.get("LLM_API_KEY", ""):
+        problems.append("LLM_API_KEY is still the example - paste your Token Factory key (rc-...)")
     return problems
 
 
