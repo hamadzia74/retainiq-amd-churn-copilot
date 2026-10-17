@@ -2,6 +2,12 @@
 
 **AMD Developer Hackathon Act III · Track 3: Reinvent Commerce**
 
+**▶ Live demo: [retainiq-amd-churn-copilot.vercel.app](https://retainiq-amd-churn-copilot.vercel.app)**
+Click **Try the demo** on the sign-in page: no account needed. The first load after a quiet spell
+can take ~15 seconds while the server starts and trains the churn model.
+
+LLM: DeepSeek-V4-Flash on **AMD Token Factory** (AMD GPUs) · License: [MIT](LICENSE)
+
 RetainIQ tells an online retailer which customers are about to stop buying, why, and what
 to do about each of them within a marketing budget. It then writes the win-back message in
 the customer's own language.
