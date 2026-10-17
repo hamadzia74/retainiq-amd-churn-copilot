@@ -126,15 +126,6 @@ python main.py
 A FastAPI backend (`api/`) and a React frontend (`frontend/`) sit on top of the same `Engine`.
 They don't change what the system calculates. They only add HTTP and a browser UI.
 
-| Dashboard (dark) | Campaign planner (light) |
-|---|---|
-| ![Dashboard](docs/screenshots/dashboard-dark-1440.png) | ![Campaign](docs/screenshots/campaign-light-1440.png) |
-| **Guided tour step** | **Powered by AMD** |
-| ![Guided tour](docs/screenshots/tour-step-light-1440.png) | ![AMD](docs/screenshots/amd-dark-1440.png) |
-
-Every page is in [`docs/screenshots/`](docs/screenshots/) at 390px (phone) and 1440px, in light
-and dark: `<page>-<theme>-<width>.png`.
-
 **Light, dark and system themes** sit in the sidebar (or the mobile menu). The choice is remembered.
 
 **Guided Tours** (header button, or the book icon on phones) walk through each module:
@@ -332,8 +323,3 @@ tickets and reviews in English, Spanish and German. It is seeded and causally st
 experience leads to complaints, then fewer orders, then often churn. Some customers also leave
 silently, and some complain but stay. To use real data, replace the CSVs in `data/` with files
 that have the same columns.
-
-## Next
-
-Live connectors (Shopify, Zendesk), uplift values learned from real campaign results and
-editable in the UI, and database migrations (Alembic) once the schema starts changing.
